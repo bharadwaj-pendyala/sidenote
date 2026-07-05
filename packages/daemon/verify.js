@@ -2,12 +2,14 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const root = await mkdtemp(join(tmpdir(), 'sidenote-'));
 const PORT = 4599;
 const base = `http://localhost:${PORT}`;
+const server = fileURLToPath(new URL('./server.js', import.meta.url));
 
-const proc = spawn('node', ['server.js'], {
+const proc = spawn('node', [server], {
   env: { ...process.env, SIDENOTE_PORT: String(PORT), SIDENOTE_ROOT: root },
   stdio: 'inherit',
 });

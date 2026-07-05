@@ -3,8 +3,10 @@ import { visit } from 'unist-util-visit';
 const BLOCK_TYPES = new Set(['paragraph', 'heading', 'blockquote', 'listItem']);
 
 /**
- * Stamps each block-level node's rendered HTML with its source byte range so
+ * Stamps each block-level node's rendered HTML with its source offset range so
  * the sidenote overlay can map a selection back to an exact span in the file.
+ * Offsets are mdast string indices (used consistently with String.slice on the
+ * daemon side), not raw byte counts.
  *
  * @param {{ file: string }} options  source path, stored on every stamped block
  */

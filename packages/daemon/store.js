@@ -6,6 +6,8 @@ import { dirname, join } from 'node:path';
  * Flat-file comment store. Lives at <projectRoot>/.sidenote/comments.json so
  * comments travel with the site repo and survive reloads.
  */
+const PATCHABLE = new Set(['status', 'diff', 'thread', 'body', 'mode']);
+
 export class CommentStore {
   constructor(projectRoot) {
     this.path = join(projectRoot, '.sidenote', 'comments.json');
@@ -29,7 +31,7 @@ export class CommentStore {
     return this.#read();
   }
 
-  async create({ file, startOffset, endOffset, quotedText, body }) {
+  async create({ file, startOffset, endOffset, quotedText, selectedText, body, mode }) {
     const comments = await this.#read();
     const comment = {
       id: `cmt_${randomUUID().replace(/-/g, '').slice(0, 16)}`,
@@ -37,7 +39,9 @@ export class CommentStore {
       startOffset,
       endOffset,
       quotedText,
+      selectedText,
       body,
+      mode: mode === 'ask' ? 'ask' : 'edit',
       status: 'open',
       createdAt: new Date().toISOString(),
       thread: [],
@@ -51,7 +55,9 @@ export class CommentStore {
     const comments = await this.#read();
     const comment = comments.find((c) => c.id === id);
     if (!comment) return null;
-    Object.assign(comment, patch);
+    for (const [key, value] of Object.entries(patch)) {
+      if (PATCHABLE.has(key)) comment[key] = value;
+    }
     await this.#write(comments);
     return comment;
   }

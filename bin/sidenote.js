@@ -14,10 +14,16 @@ const flag = (name, def) => {
 if (cmd === 'init') {
   const agent = flag('agent', 'claude');
   const port = flag('port', '4517');
+  const contentDir = flag('content', 'content');
+  const config = { agent, contentDir, port: Number(port) };
+  const askModel = flag('ask-model');
+  const resolveModel = flag('resolve-model');
+  if (askModel) config.askModel = askModel;
+  if (resolveModel) config.resolveModel = resolveModel;
   await mkdir(join(process.cwd(), '.sidenote'), { recursive: true });
   await writeFile(
     join(process.cwd(), '.sidenote', 'config.json'),
-    JSON.stringify({ agent }, null, 2) + '\n'
+    JSON.stringify(config, null, 2) + '\n'
   );
   console.log(`
 sidenote configured (agent: ${agent}).
@@ -46,5 +52,8 @@ Then run:  sidenote dev
     stdio: 'inherit',
   });
 } else {
-  console.log('usage: sidenote <init|dev> [--agent claude|codex] [--port 4517]');
+  console.log(
+    'usage: sidenote <init|dev> [--agent claude|codex] [--content content] [--port 4517]\n' +
+      '                          [--ask-model haiku] [--resolve-model opus]'
+  );
 }
