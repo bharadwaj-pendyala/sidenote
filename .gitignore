@@ -7,3 +7,5 @@ dist/
 .env.local
 
 packages/overlay/demo/index.html
+
+SPEC.md

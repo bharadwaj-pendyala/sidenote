@@ -6,6 +6,27 @@
   "bin": {
     "sidenote": "bin/sidenote.js"
   },
+  "scripts": {
+    "test": "node packages/remark-plugin/verify.js && node packages/daemon/verify.js && node packages/daemon/verify-resolve.js",
+    "test:e2e": "node packages/overlay/e2e.mjs"
+  },
+  "keywords": [
+    "markdown",
+    "blog",
+    "review",
+    "comments",
+    "llm",
+    "claude",
+    "codex",
+    "remark",
+    "git-diff"
+  ],
+  "author": "Bharadwaj Pendyala",
   "license": "MIT",
-  "repository": "github:bharadwaj-pendyala/sidenote"
+  "repository": "github:bharadwaj-pendyala/sidenote",
+  "bugs": "https://github.com/bharadwaj-pendyala/sidenote/issues",
+  "homepage": "https://github.com/bharadwaj-pendyala/sidenote#readme",
+  "engines": {
+    "node": ">=18"
+  }
 }
