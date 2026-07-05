@@ -5,3 +5,5 @@ dist/
 .DS_Store
 .env
 .env.local
+
+packages/overlay/demo/index.html
