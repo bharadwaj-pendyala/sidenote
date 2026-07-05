@@ -1,8 +1,8 @@
 # sidenote
 
 [![CI](https://github.com/bharadwaj-pendyala/sidenote/actions/workflows/ci.yml/badge.svg)](https://github.com/bharadwaj-pendyala/sidenote/actions/workflows/ci.yml)
-[![npm: sidenote-cli](https://img.shields.io/npm/v/sidenote-cli?label=sidenote-cli&color=cb3837&logo=npm)](https://www.npmjs.com/package/sidenote-cli)
-[![npm: remark-sidenote](https://img.shields.io/npm/v/remark-sidenote?label=remark-sidenote&color=cb3837&logo=npm)](https://www.npmjs.com/package/remark-sidenote)
+[![npm: sidenote-cli](https://img.shields.io/npm/v/sidenote-cli?label=sidenote-cli&logo=npm)](https://www.npmjs.com/package/sidenote-cli)
+[![npm: remark-sidenote](https://img.shields.io/npm/v/remark-sidenote?label=remark-sidenote&logo=npm)](https://www.npmjs.com/package/remark-sidenote)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
 **Comment on your rendered markdown site like a Google Doc. An LLM resolves the comments into a clean git diff. You never leave the browser.**
