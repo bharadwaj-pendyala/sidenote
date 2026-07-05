@@ -9,6 +9,24 @@ sidenote is a review layer for content authors. You review your own site on the 
 
 It is **not an editor**. You annotate intent; the agent makes the edit. Source markdown stays the source of truth.
 
+## How it works
+
+**1. Select a passage on your rendered page and write what you want changed.** Google-Docs muscle memory.
+
+![Selecting text on the rendered page opens a comment box](docs/images/01-comment.png)
+
+**2. The comment pins to the rail.** From here you can Ask about it or Resolve it into an edit.
+
+![The comment pinned as a card in the sidenote rail](docs/images/02-rail.png)
+
+**3. Ask, and the agent answers in the thread.** No file is touched; it is a conversation.
+
+![The agent answering the question inline in the rail thread](docs/images/03-ask.png)
+
+**4. Resolve, and the agent patches the source.** You review the real git diff inline, then Accept or Reject.
+
+![A real git diff shown inline under the comment, ready to accept or reject](docs/images/04-diff.png)
+
 ## Why
 
 Authoring a blog means bouncing between the browser (to see the rendered page) and the terminal (to ask an agent for a fix). That context-switch is the tax. sidenote closes the loop inside the browser.
