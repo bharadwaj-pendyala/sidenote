@@ -1,0 +1,19 @@
+{
+  "name": "@sidenote/remark-plugin",
+  "version": "0.0.1",
+  "description": "remark plugin that stamps source byte offsets onto rendered HTML blocks for sidenote.",
+  "type": "module",
+  "main": "index.js",
+  "exports": "./index.js",
+  "scripts": {
+    "verify": "node verify.js"
+  },
+  "dependencies": {
+    "unist-util-visit": "^5.0.0"
+  },
+  "devDependencies": {
+    "remark": "^15.0.1",
+    "remark-html": "^16.0.1"
+  },
+  "license": "MIT"
+}
