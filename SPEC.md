@@ -116,7 +116,9 @@ Comments persist to `.sidenote/comments.json` (git-ignored). Survive reload.
 
 ### 5.3 Resolve loop
 
-- **Resolve all**: daemon groups open comments by file, builds one prompt per file containing each comment's span + quoted text + instruction, invokes the agent headless with write access scoped to `content/`.
+Default timing is **instant per comment** (saving a comment resolves it immediately). **Batch** ("Resolve all") is an opt-in action that runs one coherent pass over every open comment.
+
+- **Resolve**: daemon takes the comment(s), builds one prompt per file containing each comment's span + quoted text + instruction, invokes the agent headless with write access scoped to `content/`.
 - Agent edits the files. Daemon captures `git diff`, returns it to the overlay.
 - Overlay renders the diff inline per comment. User Accepts (keep), Rejects (`git checkout` that hunk), or Replies (re-run that one comment with added guidance).
 - **Drift guard**: before applying, if `quotedText` no longer matches the bytes at `[startOffset,endOffset]`, mark the comment stale and ask to re-anchor rather than patch blind.
