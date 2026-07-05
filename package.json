@@ -1,0 +1,11 @@
+{
+  "name": "sidenote",
+  "version": "0.0.1",
+  "description": "Comment on your rendered markdown site like a Google Doc; an LLM resolves the comments into a clean git diff.",
+  "type": "module",
+  "bin": {
+    "sidenote": "bin/sidenote.js"
+  },
+  "license": "MIT",
+  "repository": "github:bharadwaj-pendyala/sidenote"
+}

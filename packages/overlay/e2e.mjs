@@ -1,6 +1,6 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { createServer } from 'node:http';
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,6 +15,19 @@ const here = dirname(fileURLToPath(import.meta.url));
 const DAEMON_PORT = 4611;
 const WEB_PORT = 4612;
 const root = await mkdtemp(join(tmpdir(), 'sidenote-e2e-'));
+
+// Make the temp root a real git repo holding the same markdown the demo renders,
+// so the mock adapter can edit it and git can produce a diff.
+await mkdir(join(root, 'demo'), { recursive: true });
+await copyFile(join(here, 'demo', 'sample.md'), join(root, 'demo', 'sample.md'));
+await mkdir(join(root, '.sidenote'), { recursive: true });
+await writeFile(join(root, '.sidenote', 'config.json'), JSON.stringify({ agent: 'mock' }));
+const git = (...args) => execFileSync('git', args, { cwd: root });
+git('init', '-q');
+git('config', 'user.email', 't@t.t');
+git('config', 'user.name', 't');
+git('add', '-A');
+git('commit', '-qm', 'init');
 
 spawnSync('node', ['build-demo.js'], {
   cwd: here,
@@ -86,6 +99,16 @@ try {
   await page.waitForSelector('.sn-card');
   check((await page.locator('.sn-card').count()) === 1, 'comment survives reload');
   check((await page.locator('.sn-anchored').count()) === 1, 'block re-anchors after reload');
+
+  await page.locator('.sn-card [data-resolve]').click();
+  await page.waitForSelector('.sn-card .sn-diff');
+  const diffText = await page.locator('.sn-card .sn-diff').innerText();
+  check(/^\+/m.test(diffText), 'resolve renders a diff in the card');
+  check((await daemonComments())[0]?.status === 'resolving', 'daemon marks comment resolving');
+
+  await page.locator('.sn-card [data-accept]').click();
+  await page.waitForSelector('.sn-card .sn-done');
+  check((await daemonComments())[0]?.status === 'resolved', 'accept marks comment resolved');
 
   await page.locator('.sn-card [data-del]').click();
   await page.waitForFunction(() => document.querySelectorAll('.sn-card').length === 0);

@@ -12,7 +12,22 @@ Authoring a blog means bouncing between the browser (to see the rendered page) a
 
 ## Status
 
-Early. Building the MVP against a Next.js + remark markdown site. See [SPEC.md](./SPEC.md) for the design.
+MVP loop works end to end: select on the rendered page, comment, resolve, review the git diff, accept or reject. See [SPEC.md](./SPEC.md) for the design and [TESTING.md](./TESTING.md) to try it.
+
+```
+packages/
+  remark-plugin/   stamps source byte offsets onto rendered HTML blocks
+  daemon/          localhost comment store + resolve loop (claude | codex | mock)
+  overlay/         injected browser overlay: select to comment, rail, live diff
+bin/sidenote.js    init + dev CLI
+```
+
+Quick start:
+
+```bash
+npx sidenote init --agent claude   # one-time wiring (prints 2 steps)
+npx sidenote dev                   # run the daemon next to your site
+```
 
 ## License
 

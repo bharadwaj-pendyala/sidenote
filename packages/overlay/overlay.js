@@ -11,6 +11,9 @@
         body: JSON.stringify(c),
       }).then((r) => r.json()),
     remove: (id) => fetch(`${API}/comments/${id}`, { method: 'DELETE' }),
+    resolve: (id) => fetch(`${API}/comments/${id}/resolve`, { method: 'POST' }).then((r) => r.json()),
+    accept: (id) => fetch(`${API}/comments/${id}/accept`, { method: 'POST' }).then((r) => r.json()),
+    reject: (id) => fetch(`${API}/comments/${id}/reject`, { method: 'POST' }).then((r) => r.json()),
   };
 
   const blockOf = (node) => {
@@ -35,6 +38,9 @@
     .sn-card .sn-actions { margin-top: 8px; display: flex; gap: 8px; }
     .sn-card button { font: inherit; cursor: pointer; border: 1px solid #ddd;
       background: #f6f6f6; border-radius: 6px; padding: 3px 8px; }
+    .sn-card .sn-diff { background: #0d1117; color: #c9d1d9; font: 11px/1.4 ui-monospace, monospace;
+      padding: 8px; border-radius: 6px; margin: 8px 0 0; overflow-x: auto; white-space: pre; max-height: 180px; }
+    .sn-card .sn-done { color: #2e7d32; font-size: 12px; align-self: center; }
     .sn-anchored { background: rgba(255, 214, 0, .28); border-radius: 2px; cursor: pointer; }
     .sn-flash { animation: sn-flash 1s ease; }
     @keyframes sn-flash { from { background: rgba(255,214,0,.7);} to { background: rgba(255,214,0,.28);} }
@@ -146,17 +152,34 @@
 
       const card = document.createElement('div');
       card.className = 'sn-card';
+      const diffHtml =
+        c.status === 'resolving' && c.diff ? `<pre class="sn-diff">${escapeHtml(c.diff)}</pre>` : '';
+      const actions =
+        {
+          open: '<button data-resolve>Resolve</button><button data-del>Delete</button>',
+          resolving: '<button data-accept>Accept</button><button data-reject>Reject</button>',
+          resolved: '<span class="sn-done">resolved</span><button data-del>Delete</button>',
+        }[c.status] || '<button data-del>Delete</button>';
       card.innerHTML =
         `<div class="sn-quote">${escapeHtml(c.quotedText.slice(0, 90))}</div>` +
         `<div class="sn-body">${escapeHtml(c.body)}</div>` +
-        `<div class="sn-actions"><button data-del>Delete</button></div>`;
-      card.querySelector('[data-del]').addEventListener('click', async () => {
-        await api.remove(c.id);
-        render();
-      });
+        diffHtml +
+        `<div class="sn-actions">${actions}</div>`;
+
+      const on = (sel, fn) =>
+        card.querySelector(sel)?.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          await fn();
+          render();
+        });
+      on('[data-del]', () => api.remove(c.id));
+      on('[data-resolve]', () => api.resolve(c.id));
+      on('[data-accept]', () => api.accept(c.id));
+      on('[data-reject]', () => api.reject(c.id));
+
       if (block)
         card.addEventListener('click', (e) => {
-          if (e.target.dataset.del !== undefined) return;
+          if (e.target.tagName === 'BUTTON') return;
           block.scrollIntoView({ behavior: 'smooth', block: 'center' });
           block.classList.add('sn-flash');
           setTimeout(() => block.classList.remove('sn-flash'), 1000);
