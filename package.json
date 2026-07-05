@@ -32,7 +32,10 @@
   ],
   "author": "Bharadwaj Pendyala",
   "license": "MIT",
-  "repository": "github:bharadwaj-pendyala/sidenote",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bharadwaj-pendyala/sidenote.git"
+  },
   "bugs": "https://github.com/bharadwaj-pendyala/sidenote/issues",
   "homepage": "https://github.com/bharadwaj-pendyala/sidenote#readme",
   "engines": {
