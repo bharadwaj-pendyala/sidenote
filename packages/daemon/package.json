@@ -1,7 +1,8 @@
 {
   "name": "@sidenote/daemon",
   "version": "0.0.1",
-  "description": "Local sidenote daemon: comment store and (later) agent resolve loop.",
+  "private": true,
+  "description": "Local sidenote daemon: comment store and agent resolve loop. Bundled into the sidenote-cli package; not published separately.",
   "type": "module",
   "bin": {
     "sidenote-daemon": "server.js"

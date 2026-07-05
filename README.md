@@ -49,8 +49,9 @@ Authoring a blog means bouncing between the browser (to see the rendered page) a
 ## Quick start
 
 ```bash
-npx sidenote init --agent claude   # one-time wiring (prints 2 steps)
-npx sidenote dev                   # run the daemon next to your site
+npm install --save-dev remark-sidenote   # the offset stamper for your markdown pipeline
+npx sidenote-cli init --agent claude     # one-time wiring (prints 2 steps)
+npx sidenote-cli dev                     # run the daemon next to your site
 ```
 
 `init` writes `.sidenote/config.json`:

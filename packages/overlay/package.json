@@ -1,7 +1,8 @@
 {
   "name": "@sidenote/overlay",
   "version": "0.0.1",
-  "description": "Injected browser overlay: select to comment, comment rail, live anchors.",
+  "private": true,
+  "description": "Injected browser overlay: select to comment, comment rail, live anchors. Bundled into the sidenote-cli package; not published separately.",
   "type": "module",
   "scripts": {
     "build-demo": "node build-demo.js",

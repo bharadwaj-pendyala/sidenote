@@ -1,10 +1,23 @@
 {
-  "name": "@sidenote/remark-plugin",
+  "name": "remark-sidenote",
   "version": "0.0.1",
-  "description": "remark plugin that stamps source byte offsets onto rendered HTML blocks for sidenote.",
+  "description": "remark plugin that stamps source offsets onto rendered HTML blocks so sidenote can map a selection back to the source markdown.",
   "type": "module",
   "main": "index.js",
   "exports": "./index.js",
+  "files": [
+    "index.js"
+  ],
+  "keywords": [
+    "remark",
+    "remark-plugin",
+    "unified",
+    "markdown",
+    "mdast",
+    "sidenote",
+    "source-map",
+    "offsets"
+  ],
   "scripts": {
     "verify": "node verify.js"
   },
@@ -15,5 +28,11 @@
     "remark": "^15.0.1",
     "remark-html": "^16.0.1"
   },
-  "license": "MIT"
+  "author": "Bharadwaj Pendyala",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "github:bharadwaj-pendyala/sidenote",
+    "directory": "packages/remark-plugin"
+  }
 }

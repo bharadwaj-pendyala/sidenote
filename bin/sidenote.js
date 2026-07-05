@@ -32,7 +32,7 @@ Two one-time wiring steps in your site:
 
 1) Stamp source offsets where you render markdown:
 
-     import sidenoteOffsets from '@sidenote/remark-plugin';
+     import sidenoteOffsets from 'remark-sidenote';
      ...
      .use(sidenoteOffsets, { file: relativePathToThisMarkdownFile })
 

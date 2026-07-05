@@ -34,7 +34,8 @@ Target: any site that renders markdown via `remark().use(remarkHtml)` (e.g. bhar
 
 ```bash
 # in the site repo
-npx sidenote init --agent claude     # or --agent codex
+npm install --save-dev remark-sidenote
+npx sidenote-cli init --agent claude     # or --agent codex
 ```
 
 Then the two steps `init` prints:
@@ -42,7 +43,7 @@ Then the two steps `init` prints:
 1. Add the offset stamper to the markdown pipeline:
 
    ```js
-   import sidenoteOffsets from '@sidenote/remark-plugin';
+   import sidenoteOffsets from 'remark-sidenote';
 
    await remark()
      .use(sidenoteOffsets, { file: `content/posts/${slug}.md` }) // path relative to repo root
@@ -65,7 +66,7 @@ Then the two steps `init` prints:
 npm run dev
 
 # terminal 2: the sidenote daemon (from the site repo root, so it edits the right files)
-npx sidenote dev --agent claude
+npx sidenote-cli dev --agent claude
 ```
 
 Open a blog post in the browser. Select a passage, leave a comment, hit **Resolve**.

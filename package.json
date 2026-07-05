@@ -1,11 +1,19 @@
 {
-  "name": "sidenote",
+  "name": "sidenote-cli",
   "version": "0.0.1",
-  "description": "Comment on your rendered markdown site like a Google Doc; an LLM resolves the comments into a clean git diff.",
+  "description": "Comment on your rendered markdown site like a Google Doc; an AI agent resolves the comments into a clean git diff.",
   "type": "module",
   "bin": {
     "sidenote": "bin/sidenote.js"
   },
+  "files": [
+    "bin/sidenote.js",
+    "packages/daemon/server.js",
+    "packages/daemon/store.js",
+    "packages/daemon/git.js",
+    "packages/daemon/adapters.js",
+    "packages/overlay/overlay.js"
+  ],
   "scripts": {
     "test": "node packages/remark-plugin/verify.js && node packages/daemon/verify.js && node packages/daemon/verify-resolve.js",
     "test:e2e": "node packages/overlay/e2e.mjs"
@@ -19,7 +27,8 @@
     "claude",
     "codex",
     "remark",
-    "git-diff"
+    "git-diff",
+    "sidenote"
   ],
   "author": "Bharadwaj Pendyala",
   "license": "MIT",
