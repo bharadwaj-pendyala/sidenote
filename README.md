@@ -7,6 +7,8 @@
 
 **Comment on your rendered markdown site like a Google Doc. An LLM resolves the comments into a clean git diff. You never leave the browser.**
 
+![sidenote in action: select a passage, comment, ask, and resolve into a git diff](docs/images/intro.gif)
+
 sidenote is a review layer for content authors. You review your own site on the local dev server, select a passage, and leave a comment, exactly like commenting in Google Docs or Word. A local coding agent (`claude` or `codex`) either answers your question in place or patches the source markdown and hands you back a git diff to accept or reject.
 
 It is **not an editor**. You annotate intent; the agent makes the edit. Source markdown stays the source of truth.
