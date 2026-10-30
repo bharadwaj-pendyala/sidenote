@@ -79,15 +79,15 @@ and the diff shows in the rail. **Accept** keeps it; **Reject** reverts the file
 - `claude` or `codex` is installed and on `PATH`.
 - Comments target whole blocks (paragraph / heading / list item) in the MVP.
 
-## C. UX checks with agent-eyes
+## C. UX checks with userlens
 
-[agent-eyes](https://github.com/bharadwaj-pendyala/agent-eyes) runs the CLI and
+[userlens](https://github.com/bharadwaj-pendyala/userlens) runs the CLI and
 the comment flow the way a user does and checks what they would see. The flow
 runs in Chromium against a temp copy of the repo with the `mock` agent, so it
 needs no LLM.
 
 ```bash
-pip install 'agent-eyes[browser]' && python -m playwright install chromium
+pip install 'userlens[browser]' && python -m playwright install chromium
 eyes run                        # 7 cases: CLI, plus the comment flow at 1280px and 800px
 eyes approve --case help        # accept output you reviewed
 ```
