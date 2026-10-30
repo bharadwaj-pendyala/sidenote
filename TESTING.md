@@ -9,6 +9,7 @@ Proves the whole loop offline: select, comment, resolve, diff, accept.
 ```bash
 # from the repo root
 cd packages/overlay && npm install
+npm install --no-save playwright && npx playwright install chromium
 
 # runs a real browser through select -> comment -> resolve -> diff -> accept -> delete
 node e2e.mjs
