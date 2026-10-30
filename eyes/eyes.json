@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "command": ["node", "{root}/bin/sidenote.js"],
+  "cwd": "..",
+  "sources": {"cli": "bin/sidenote.js", "page": "packages/overlay/overlay.js"},
+  "services": {
+    "daemon": {
+      "command": ["node", "{workspace}/packages/daemon/server.js"],
+      "env": {"SIDENOTE_PORT": "4611", "SIDENOTE_ROOT": "{workspace}/site"},
+      "ready": {"url": "http://localhost:4611/health"}
+    },
+    "web": {
+      "command": ["python3", "-m", "http.server", "4612", "--bind", "127.0.0.1"],
+      "cwd": "{workspace}/packages/overlay/demo",
+      "ready": {"url": "http://127.0.0.1:4612/"}
+    }
+  },
+  "cases": [
+    {"id": "help", "argv": ["--help"], "exit": 0, "stdout_contains": ["usage: sidenote", "init", "dev"]},
+    {"id": "no-args", "argv": [], "exit": 0, "stdout_contains": ["usage: sidenote"]},
+    {"id": "unknown-command", "argv": ["deev"], "exit": 2,
+     "stderr_contains": ["unknown command 'deev'", "did you mean 'dev'"]},
+    {"id": "init-writes-config", "workspace": "temp", "cwd": "eyes/fixtures/blog",
+     "command": ["sh", "-c", "node {root}/bin/sidenote.js init --agent codex && cat .sidenote/config.json"],
+     "exit": 0, "stdout_contains": ["sidenote configured (agent: codex)", "\"agent\": \"codex\""]},
+    {"id": "init-rejects-unknown-agent", "workspace": "temp", "cwd": "eyes/fixtures/blog",
+     "argv": ["init", "--agent", "gpt"], "exit": 2,
+     "stderr_contains": ["unknown agent 'gpt'", "claude", "codex"]},
+    {"id": "comment-flow", "workspace": "temp", "services": ["daemon", "web"],
+     "env": {"SIDENOTE_PORT": "4611"},
+     "setup": [
+       "node packages/overlay/build-demo.js",
+       "mkdir -p site/demo site/.sidenote && cp packages/overlay/demo/sample.md site/demo/",
+       "echo '{\"agent\": \"mock\"}' > site/.sidenote/config.json",
+       "cd site && git init -q && git add -A && git -c user.email=eyes@local -c user.name=eyes commit -qm init"
+     ],
+     "page": {"viewport": "desktop", "steps": [
+       {"goto": "http://127.0.0.1:4612/index.html"},
+       {"wait_for": "#sn-rail"},
+       {"select_text": "article p"},
+       {"click": "#sn-add"},
+       {"fill": "#sn-pop textarea", "text": "too vague, name the retriever"},
+       {"click": "#sn-pop [data-sn-save]"},
+       {"expect_count": ".sn-card", "count": 1},
+       {"reload": true},
+       {"expect_text": "too vague, name the retriever", "in": "#sn-rail"},
+       {"click": ".sn-card [data-resolve]"},
+       {"wait_for": ".sn-card .sn-diff"},
+       {"click": ".sn-card [data-accept]"},
+       {"wait_for": ".sn-card .sn-done"}
+     ]}},
+    {"id": "comment-flow-narrow-window", "note": "an author with the browser next to an editor", "workspace": "temp", "services": ["daemon", "web"],
+     "env": {"SIDENOTE_PORT": "4611"},
+     "setup": [
+       "node packages/overlay/build-demo.js",
+       "mkdir -p site/demo site/.sidenote && cp packages/overlay/demo/sample.md site/demo/",
+       "echo '{\"agent\": \"mock\"}' > site/.sidenote/config.json",
+       "cd site && git init -q && git add -A && git -c user.email=eyes@local -c user.name=eyes commit -qm init"
+     ],
+     "page": {"viewport": [800, 900], "steps": [
+       {"goto": "http://127.0.0.1:4612/index.html"},
+       {"wait_for": "#sn-rail"},
+       {"select_text": "article p"},
+       {"click": "#sn-add"},
+       {"fill": "#sn-pop textarea", "text": "shorter please"},
+       {"click": "#sn-pop [data-sn-save]"},
+       {"expect_count": ".sn-card", "count": 1}
+     ]}}
+  ]
+}

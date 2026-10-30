@@ -1,0 +1,7 @@
+$ 
+[exit 0]
+--- stdout
+usage: sidenote <init|dev> [--agent claude|codex] [--content content]
+                [--port 4517] [--ask-model haiku] [--resolve-model opus]
+--- stderr
+
