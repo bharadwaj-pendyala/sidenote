@@ -1,0 +1,25 @@
+page http://127.0.0.1:4612/index.html
+   1. goto http://127.0.0.1:4612/index.html  [pass]
+   2. wait_for #sn-rail  [pass]
+   3. select_text article p  [pass]
+   4. click #sn-add  [pass]
+   5. fill #sn-pop textarea  [pass]
+   6. click #sn-pop [data-sn-save]  [pass]
+   7. expect_count .sn-card  [pass]
+--- visible text
+RAG explained
+
+RAG retrieves documents and stuff to ground the model before it answers.
+
+The attention mechanism lets tokens look at each other to build context.
+
+Key ideas:
+
+retrieval narrows the search space
+generation stays grounded in sources
+SIDENOTE
+RAG retrieves documents and stuff to ground the model before it answers.
+shorter please
+Ask
+Resolve
+Delete

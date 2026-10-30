@@ -41,8 +41,8 @@
       box-sizing: border-box; z-index: 2147483000; }
     #sn-head { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 12px; }
     #sn-head h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em;
-      color: #888; margin: 0; }
-    #sn-clear { font: 11px system-ui; color: #888; background: none; border: 0; cursor: pointer;
+      color: #666; margin: 0; }
+    #sn-clear { font: 11px system-ui; color: #666; background: none; border: 0; cursor: pointer;
       padding: 0; display: none; }
     #sn-clear:hover { color: #333; text-decoration: underline; }
     .sn-card { background: #fff; border: 1px solid #e6e6e6; border-radius: 8px;
@@ -67,7 +67,7 @@
     .sn-reply textarea { width: 100%; box-sizing: border-box; height: 46px; resize: vertical;
       font: 12px system-ui; border: 1px solid #ddd; border-radius: 6px; padding: 6px; }
     .sn-card .sn-live { margin: 8px 0 0; }
-    .sn-act { color: #8a8a8a; font: 11px/1.5 ui-monospace, monospace; }
+    .sn-act { color: #666; font: 11px/1.5 ui-monospace, monospace; }
     .sn-answer { color: #111; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere;
       margin-top: 4px; }
     .sn-answer::after { content: '▋'; color: #999; animation: sn-blink 1s steps(2) infinite; }

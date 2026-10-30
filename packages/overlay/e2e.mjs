@@ -5,10 +5,16 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const playwrightEntry =
-  process.env.PLAYWRIGHT_PATH ||
-  '/Users/bharad/Documents/Github/bharad-portfolio/node_modules/playwright/index.js';
-const pw = await import(playwrightEntry);
+// Playwright is not a dependency of this repo. Install it next to the overlay
+// (npm install --no-save playwright) or point PLAYWRIGHT_PATH at an install.
+const playwrightEntry = process.env.PLAYWRIGHT_PATH || 'playwright';
+const pw = await import(playwrightEntry).catch(() => {
+  console.error(
+    'e2e needs Playwright: run `npm install --no-save playwright` in packages/overlay, ' +
+      'or set PLAYWRIGHT_PATH to its index.js'
+  );
+  process.exit(2);
+});
 const chromium = pw.chromium ?? pw.default?.chromium;
 
 const here = dirname(fileURLToPath(import.meta.url));

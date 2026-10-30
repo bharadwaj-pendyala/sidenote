@@ -1,0 +1,23 @@
+$ init --agent codex --port 4600
+[exit 0]
+--- stdout
+
+sidenote configured (agent: codex).
+
+Two one-time wiring steps in your site:
+
+1) Stamp source offsets where you render markdown:
+
+     import sidenoteOffsets from 'remark-sidenote';
+     ...
+     .use(sidenoteOffsets, { file: relativePathToThisMarkdownFile })
+
+2) Load the overlay in dev only (e.g. in your layout):
+
+     {process.env.NODE_ENV === 'development' && (
+       <script src="http://localhost:4600/overlay.js" defer />
+     )}
+
+Then run:  sidenote dev
+--- stderr
+
