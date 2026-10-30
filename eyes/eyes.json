@@ -21,11 +21,13 @@
     {"id": "unknown-command", "argv": ["deev"], "exit": 2,
      "stderr_contains": ["unknown command 'deev'", "did you mean 'dev'"]},
     {"id": "init-writes-config", "workspace": "temp", "cwd": "eyes/fixtures/blog",
-     "command": ["sh", "-c", "node {root}/bin/sidenote.js init --agent codex && cat .sidenote/config.json"],
-     "exit": 0, "stdout_contains": ["sidenote configured (agent: codex)", "\"agent\": \"codex\""]},
+     "argv": ["init", "--agent", "codex", "--port", "4600"],
+     "exit": 0, "stdout_contains": ["sidenote configured (agent: codex)", "localhost:4600/overlay.js"],
+     "files": {".sidenote/config.json": {"json": {"agent": "codex", "port": 4600, "contentDir": "content"}}}},
     {"id": "init-rejects-unknown-agent", "workspace": "temp", "cwd": "eyes/fixtures/blog",
      "argv": ["init", "--agent", "gpt"], "exit": 2,
-     "stderr_contains": ["unknown agent 'gpt'", "claude", "codex"]},
+     "stderr_contains": ["unknown agent 'gpt'", "claude", "codex"],
+     "files": {".sidenote/config.json": {"exists": false}}},
     {"id": "comment-flow", "workspace": "temp", "services": ["daemon", "web"],
      "env": {"SIDENOTE_PORT": "4611"},
      "setup": [
@@ -48,7 +50,10 @@
        {"wait_for": ".sn-card .sn-diff"},
        {"click": ".sn-card [data-accept]"},
        {"wait_for": ".sn-card .sn-done"}
-     ]}},
+     ]},
+     "note": "the mock agent upper-cases the passage, so the edit must reach the source file",
+     "files": {"site/demo/sample.md": {"contains": ["RAG RETRIEVES DOCUMENTS"]},
+               "site/.sidenote/comments.json": {"contains": ["too vague, name the retriever", "resolved"]}}},
     {"id": "comment-flow-narrow-window", "note": "an author with the browser next to an editor", "workspace": "temp", "services": ["daemon", "web"],
      "env": {"SIDENOTE_PORT": "4611"},
      "setup": [
