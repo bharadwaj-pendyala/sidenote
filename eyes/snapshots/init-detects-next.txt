@@ -1,0 +1,30 @@
+$ init
+[exit 0]
+--- stdout
+
+sidenote configured (agent: claude). Next.js detected (next.config.mjs).
+
+Install the plugin:  npm install --save-dev remark-sidenote
+
+Two one-time wiring steps:
+
+1) Stamp source offsets. With @next/mdx, in next.config.mjs:
+
+     const withMDX = createMDX({
+       options: { remarkPlugins: [['remark-sidenote', {}]] },
+     });
+
+   If you call remark() yourself, pass the file instead:
+
+     .use(sidenoteOffsets, { file: 'content/posts/my-post.md' })
+
+2) Load the overlay in dev only (e.g. in app/layout.tsx):
+
+     {process.env.NODE_ENV === 'development' && (
+       <script src="http://localhost:4517/overlay.js" defer />
+     )}
+
+Then run:  sidenote dev
+Guide:     docs/guides/nextjs.md in github.com/bharadwaj-pendyala/sidenote
+--- stderr
+
