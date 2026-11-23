@@ -13,7 +13,8 @@
       "command": ["python3", "-m", "http.server", "4612", "--bind", "127.0.0.1"],
       "cwd": "{workspace}/packages/overlay/demo",
       "ready": {"url": "http://127.0.0.1:4612/"}
-    }
+    },
+    "playground": {"command": ["python3", "-m", "http.server", "4613", "--bind", "127.0.0.1"], "cwd": "{workspace}/packages/overlay/playground/dist", "ready": {"url": "http://127.0.0.1:4613/"}}
   },
   "cases": [
     {"id": "help", "argv": ["--help"], "exit": 0, "stdout_contains": ["usage: sidenote", "init", "dev"]},
@@ -68,6 +69,67 @@
        {"select_text": "article p"},
        {"click": "#sn-add"},
        {"fill": "#sn-pop textarea", "text": "shorter please"},
+       {"click": "#sn-pop [data-sn-save]"},
+       {"expect_count": ".sn-card", "count": 1}
+     ]}},
+    {"id": "init-detects-astro", "note": "Astro configures remark once, so the steps must not ask for a per-file path", "workspace": "temp", "cwd": "eyes/fixtures/astro-site", "argv": ["init"], "exit": 0, "stdout_contains": ["Astro detected", "astro.config.mjs", "remarkPlugins: [sidenote]", "import.meta.env.DEV", "sidenote dev"], "stdout_absent": ["relativePathToThisMarkdownFile"], "files": {".sidenote/config.json": {"json": {"agent": "claude", "contentDir": "src/content"}}}},
+    {"id": "init-detects-docusaurus", "workspace": "temp", "cwd": "eyes/fixtures/docusaurus-site", "argv": ["init", "--agent", "codex"], "exit": 0, "stdout_contains": ["Docusaurus detected", "docusaurus.config.js", "remarkPlugins: [sidenote]", "headTags", "sidenote dev"], "stdout_absent": ["relativePathToThisMarkdownFile"], "files": {".sidenote/config.json": {"json": {"agent": "codex", "contentDir": "blog"}}}},
+    {"id": "init-detects-next", "workspace": "temp", "cwd": "eyes/fixtures/next-site", "argv": ["init"], "exit": 0, "stdout_contains": ["Next.js detected", "remark-sidenote", "process.env.NODE_ENV === 'development'", "sidenote dev"], "files": {".sidenote/config.json": {"json": {"contentDir": "content"}}}},
+    {"id": "init-content-flag-wins", "note": "an explicit --content beats the detected folder", "workspace": "temp", "cwd": "eyes/fixtures/astro-site", "argv": ["init", "--content", "src/pages"], "exit": 0, "files": {".sidenote/config.json": {"json": {"contentDir": "src/pages"}}}},
+    {"id": "playground-resolve-accept", "note": "a visitor tries the whole loop in the hosted demo, with no install", "workspace": "temp", "services": ["playground"], "setup": ["node packages/overlay/build-playground.js"],
+     "page": {"viewport": "desktop", "steps": [
+       {"goto": "http://127.0.0.1:4613/index.html"},
+       {"wait_for": "#sn-rail"},
+       {"expect_text": "live playground", "in": "#pg-banner"},
+       {"select_text": "article p"},
+       {"click": "#sn-add"},
+       {"fill": "#sn-pop textarea", "text": "tighten this, cut the filler"},
+       {"click": "#sn-pop [data-sn-save]"},
+       {"expect_count": ".sn-card", "count": 1},
+       {"reload": true},
+       {"expect_text": "tighten this, cut the filler", "in": "#sn-rail"},
+       {"click": ".sn-card [data-resolve]"},
+       {"wait_for": ".sn-card .sn-diff"},
+       {"expect_text": "@@", "in": ".sn-card .sn-diff"},
+       {"click": ".sn-card [data-accept]"},
+       {"wait_for": ".sn-card .sn-done"},
+       {"expect_text": "Every draft hides a better post.", "in": "article"}
+     ]}},
+    {"id": "playground-reject", "workspace": "temp", "services": ["playground"], "setup": ["node packages/overlay/build-playground.js"],
+     "page": {"viewport": "desktop", "steps": [
+       {"goto": "http://127.0.0.1:4613/index.html"},
+       {"wait_for": "#sn-rail"},
+       {"select_text": "article p"},
+       {"click": "#sn-add"},
+       {"fill": "#sn-pop textarea", "text": "shorter"},
+       {"click": "#sn-pop [data-sn-save]"},
+       {"click": ".sn-card [data-resolve]"},
+       {"wait_for": ".sn-card .sn-diff"},
+       {"click": ".sn-card [data-reject]"},
+       {"wait_for": ".sn-card [data-resolve]"},
+       {"expect_count": ".sn-card .sn-diff", "count": 0},
+       {"expect_text": "basically", "in": "article p"}
+     ]}},
+    {"id": "playground-ask", "workspace": "temp", "services": ["playground"], "setup": ["node packages/overlay/build-playground.js"],
+     "page": {"viewport": "desktop", "steps": [
+       {"goto": "http://127.0.0.1:4613/index.html"},
+       {"wait_for": "#sn-rail"},
+       {"select_text": "article p"},
+       {"click": "#sn-add"},
+       {"fill": "#sn-pop textarea", "text": "is this intro too long?"},
+       {"click": "#sn-pop [data-sn-save]"},
+       {"click": ".sn-card [data-ask]"},
+       {"wait_for": ".sn-card .sn-turn.agent"},
+       {"expect_text": "intro", "in": ".sn-card .sn-turn.agent"},
+       {"expect_count": ".sn-card [data-reply-open]", "count": 1}
+     ]}},
+    {"id": "playground-phone", "note": "most launch traffic arrives on a phone", "workspace": "temp", "services": ["playground"], "setup": ["node packages/overlay/build-playground.js"],
+     "page": {"viewport": "mobile", "steps": [
+       {"goto": "http://127.0.0.1:4613/index.html"},
+       {"wait_for": "#sn-rail"},
+       {"select_text": "article p"},
+       {"click": "#sn-add"},
+       {"fill": "#sn-pop textarea", "text": "cut this"},
        {"click": "#sn-pop [data-sn-save]"},
        {"expect_count": ".sn-card", "count": 1}
      ]}}
