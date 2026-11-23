@@ -1,6 +1,6 @@
 {
   "name": "sidenote-cli",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Comment on your rendered markdown site like a Google Doc; an AI agent resolves the comments into a clean git diff.",
   "type": "module",
   "bin": {

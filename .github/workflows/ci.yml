@@ -17,3 +17,5 @@ jobs:
         run: npm ci --prefix packages/remark-plugin
       - name: Run tests
         run: npm test
+      - name: Build the playground
+        run: npm ci --prefix packages/overlay && node packages/overlay/build-playground.js
