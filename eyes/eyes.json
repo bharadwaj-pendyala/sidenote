@@ -205,7 +205,16 @@
        {"click": ".sn-card:nth-child(4) [data-accept]"},
        {"wait_for": ".sn-card:nth-child(4) .sn-done"},
        {"expect_text": "See this for more.", "in": "article"},
-       {"expect_count": "article a[href^='javascript']", "count": 0}
+       {"expect_count": "article a[href^='javascript']", "count": 0},
+       {"select_text": "article p:nth-of-type(4)"},
+       {"click": "#sn-add"},
+       {"fill": "#sn-pop textarea", "text": "TRUNCATE"},
+       {"click": "#sn-pop [data-sn-save]"},
+       {"click": ".sn-card:nth-child(5) [data-resolve]"},
+       {"expect_text": "cut off before it finished", "in": ".sn-card:nth-child(5)"},
+       {"wait_for": ".sn-card:nth-child(5) [data-resolve]"},
+       {"expect_count": ".sn-card:nth-child(5) .sn-diff", "count": 0},
+       {"expect_text": "A short checklist for the second pass:", "in": "article"}
      ]}}
   ]
 }

@@ -41,6 +41,15 @@ page http://127.0.0.1:4613/index.html?anthropic_base_url=http://127.0.0.1:4616
   40. wait_for .sn-card:nth-child(4) .sn-done  [pass]
   41. expect_text See this for more.  [pass]
   42. expect_count article a[href^='javascript']  [pass]
+  43. select_text article p:nth-of-type(4)  [pass]
+  44. click #sn-add  [pass]
+  45. fill #sn-pop textarea  [pass]
+  46. click #sn-pop [data-sn-save]  [pass]
+  47. click .sn-card:nth-child(5) [data-resolve]  [pass]
+  48. expect_text cut off before it finished  [pass]
+  49. wait_for .sn-card:nth-child(5) [data-resolve]  [pass]
+  50. expect_count .sn-card:nth-child(5) .sn-diff  [pass]
+  51. expect_text A short checklist for the second pass:  [pass]
 --- visible text
 This is the sidenote live playground. It is a rendered blog post, like yours.
 Select a sentence in the post and press + Comment.
@@ -105,4 +114,12 @@ Delete
 When you spot something, resist the urge to fix it right away. Leave a note that says what
 add a BADLINK here
 resolved
+Delete
+A short checklist for the second pass:
+TRUNCATE
+● reading posts/editing.md
+● asking claude-opus-5-5 to edit lines 13-13
+error: the reply was cut off before it finished. Try a shorter passage.
+Ask
+Resolve
 Delete

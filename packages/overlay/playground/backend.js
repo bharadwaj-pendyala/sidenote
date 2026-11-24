@@ -112,16 +112,26 @@
   // --- applying an accepted edit to the page -----------------------------------
   const escapeHtml = (s) =>
     s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  // A small inline renderer for accepted edits: code spans, links, bold and
+  // italics. Code spans and finished links are set aside first, so emphasis
+  // never rewrites a URL and link syntax inside backticks stays literal.
   // Links keep only http(s) targets; anything else (javascript:, data:) shows
-  // as its label text. The URL was HTML-escaped above, so it is safe in href.
-  const link = (_, label, url) =>
-    /^https?:\/\//i.test(url) ? `<a href="${url}" rel="noopener noreferrer">${label}</a>` : label;
-  const inline = (md) =>
-    escapeHtml(md.replace(/^(\s*(?:[-*+]|\d+\.|#{1,6}|>)\s+)/, ''))
-      .replace(/\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)/g, link)
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  // as its label. The input is HTML-escaped first, so it is safe in href.
+  const emphasis = (text) =>
+    text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  const inline = (md) => {
+    const held = [];
+    const hold = (html) => `\u0000${held.push(html) - 1}\u0000`;
+    const text = escapeHtml(md.replace(/^(\s*(?:[-*+]|\d+\.|#{1,6}|>)\s+)/, ''))
+      .replace(/\u0000/g, '')
+      .replace(/`([^`]+)`/g, (_, code) => hold(`<code>${code}</code>`))
+      .replace(/\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)/g, (_, label, url) =>
+        /^https?:\/\//i.test(url)
+          ? hold(`<a href="${url}" rel="noopener noreferrer">${emphasis(label)}</a>`)
+          : emphasis(label)
+      );
+    return emphasis(text).replace(/\u0000(\d+)\u0000/g, (_, i) => held[Number(i)]);
+  };
 
   // Saved comments already carry shifted offsets, so a replay on load skips them.
   function applyEdit({ start, end, text }, shiftComments = false) {
