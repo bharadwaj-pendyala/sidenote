@@ -10,7 +10,7 @@ npm install --save-dev remark-sidenote
 npx sidenote-cli init --agent claude   # or --agent codex
 ```
 
-`init` sees `astro.config.mjs` and sets `contentDir` to `src/content`.
+`init` sees `astro.config.mjs` and sets `contentDir` to whichever of `src/content` and `src/pages` exist, so comments work on content collections and on `.md` pages.
 
 ## 2. Stamp source offsets
 

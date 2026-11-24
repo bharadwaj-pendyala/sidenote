@@ -40,7 +40,7 @@ const FRAMEWORKS = [
   {
     name: 'Astro',
     configs: ['astro.config.mjs', 'astro.config.ts', 'astro.config.js'],
-    contentDir: 'src/content',
+    contentDirs: ['src/content', 'src/pages'],
     guide: 'astro',
     steps: (config, overlay) => `1) Stamp source offsets in ${config}:
 
@@ -59,8 +59,7 @@ const FRAMEWORKS = [
   {
     name: 'Docusaurus',
     configs: ['docusaurus.config.js', 'docusaurus.config.mjs', 'docusaurus.config.ts'],
-    contentDir: 'docs',
-    alsoDirs: ['blog'],
+    contentDirs: ['docs', 'blog', 'src/pages'],
     guide: 'docusaurus',
     steps: (config, overlay) => `1) Stamp source offsets in ${config}, for docs and blog:
 
@@ -86,7 +85,7 @@ const FRAMEWORKS = [
   {
     name: 'Next.js',
     configs: ['next.config.mjs', 'next.config.js', 'next.config.ts'],
-    contentDir: 'content',
+    contentDirs: ['content', 'app', 'pages', 'src/app', 'src/pages'],
     guide: 'nextjs',
     steps: (config, overlay) => `1) Stamp source offsets. With @next/mdx, in ${config}:
 
@@ -117,12 +116,17 @@ async function detectFramework(root) {
   return null;
 }
 
+// The daemon only edits markdown inside contentDir, so it must cover every
+// folder the printed steps instrument: all of the framework's folders that
+// exist, as a list when there are several.
 async function pickContentDir(root, fw) {
   if (!fw) return 'content';
-  for (const dir of [fw.contentDir, ...(fw.alsoDirs || [])]) {
-    if (await exists(join(root, dir))) return dir;
+  const found = [];
+  for (const dir of fw.contentDirs) {
+    if (await exists(join(root, dir))) found.push(dir);
   }
-  return fw.contentDir;
+  if (found.length === 0) return fw.contentDirs[0];
+  return found.length === 1 ? found[0] : found;
 }
 
 const REPO = 'github.com/bharadwaj-pendyala/sidenote';

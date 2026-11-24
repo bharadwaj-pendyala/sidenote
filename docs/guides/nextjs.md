@@ -10,6 +10,11 @@ npm install --save-dev remark-sidenote
 npx sidenote-cli init --agent claude   # or --agent codex
 ```
 
+`init` sees `next.config.*` and sets `contentDir` to whichever of `content`,
+`app`, `pages`, `src/app` and `src/pages` exist. Only `.md` and `.mdx` files in
+those folders can be edited. If your posts live elsewhere, pass
+`--content <folder>`.
+
 ## 2a. `@next/mdx` (`.mdx` pages in `app/`)
 
 ```js

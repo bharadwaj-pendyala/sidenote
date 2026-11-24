@@ -1,0 +1,9 @@
+$ bash -c 'set -e; A=http://localhost:4614; for f in src/pages/post.md src/content/blog/hello.md; do t=$(node -e "const s=require('\''fs'\'').readFileSync('\''eyes/fixtures/astro-site/'\''+process.argv[1],'\''utf8'\'');const p=s.indexOf('\''Hello from Astro.'\'')>=0?'\''Hello from Astro.'\'':'\''A page to comment on.'\'';const i=s.indexOf(p);console.log(JSON.stringify({file:process.argv[1],startOffset:i,endOffset:i+p.length,body:'\''louder'\''}))" $f); curl -s -o /dev/null -w "create $f %{http_code}\n" -H '\''Content-Type: application/json'\'' -d "$t" $A/comments; done; curl -s -X POST $A/resolve-all | node -e "let d='\'''\'';process.stdin.on('\''data'\'',c=>d+=c).on('\''end'\'',()=>{for(const r of JSON.parse(d))console.log('\''resolved'\'',r.file)})"'
+[exit 0]
+--- stdout
+create src/pages/post.md 201
+create src/content/blog/hello.md 201
+resolved src/pages/post.md
+resolved src/content/blog/hello.md
+--- stderr
+

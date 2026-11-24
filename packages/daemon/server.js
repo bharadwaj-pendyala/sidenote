@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { createServer } from 'node:http';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -28,18 +28,26 @@ function loadConfig() {
 }
 
 const config = loadConfig();
-const contentRoot = resolve(projectRoot, config.contentDir);
+// contentDir is one folder or a list of them (a site can keep markdown in
+// several places, e.g. Astro's src/content and src/pages).
+const contentRoots = [config.contentDir]
+  .flat()
+  .filter((dir) => typeof dir === 'string' && dir)
+  .map((dir) => resolve(projectRoot, dir));
+if (contentRoots.length === 0) contentRoots.push(resolve(projectRoot, '.'));
 const ALLOWED_EXT = new Set(['.md', '.mdx']);
 
-// A comment's file must resolve to an allowed markdown file inside contentRoot.
-// Blocks path traversal and keeps the agent's write surface inside the content dir.
+// A comment's file must resolve to an allowed markdown file inside a content
+// root. Blocks path traversal and keeps the agent's write surface inside them.
 function inScope(file) {
   if (typeof file !== 'string' || !file || isAbsolute(file)) return null;
   const abs = resolve(projectRoot, file);
-  const rel = relative(contentRoot, abs);
-  if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) return null;
   if (!ALLOWED_EXT.has(extname(abs))) return null;
-  return abs;
+  const inside = contentRoots.some((root) => {
+    const rel = relative(root, abs);
+    return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel);
+  });
+  return inside ? abs : null;
 }
 
 async function sourceSlice(abs, start, end) {
@@ -58,12 +66,25 @@ async function isStale(comment) {
 }
 
 // Run the agent on one file's comments, then revert any edits it made outside
-// that file so the write surface stays scoped to the target.
+// that file so the write surface stays scoped to the target. Files that were
+// already changed before this run (earlier resolves awaiting Accept, the
+// author's own edits) are left alone.
 async function resolveComments(file, comments, onEvent) {
   const target = resolve(projectRoot, file);
+  // Snapshot files that are already dirty, so a stray edit to one of them can
+  // be undone without losing the changes it held before this run.
+  const dirty = new Map();
+  for (const changed of await changedFiles(projectRoot)) {
+    const abs = resolve(projectRoot, changed);
+    if (abs !== target) dirty.set(changed, await readFile(abs, 'utf8').catch(() => null));
+  }
   await makeAdapter(config.agent, config).resolve(projectRoot, file, comments, onEvent);
   for (const changed of await changedFiles(projectRoot)) {
-    if (resolve(projectRoot, changed) !== target) await revertFile(projectRoot, changed);
+    const abs = resolve(projectRoot, changed);
+    if (abs === target) continue;
+    if (!dirty.has(changed)) await revertFile(projectRoot, changed);
+    else if (dirty.get(changed) !== null && (await readFile(abs, 'utf8')) !== dirty.get(changed))
+      await writeFile(abs, dirty.get(changed));
   }
   return diffFile(projectRoot, file);
 }

@@ -15,7 +15,13 @@ const original = '# Title\n\nRAG retrieves documents to ground the model.\n';
 await mkdir(join(root, 'content'), { recursive: true });
 await writeFile(join(root, file), original);
 await mkdir(join(root, '.sidenote'), { recursive: true });
-await writeFile(join(root, '.sidenote', 'config.json'), JSON.stringify({ agent: 'mock' }));
+// Two content folders, as `sidenote init` writes for Astro (src/content + src/pages).
+await writeFile(join(root, '.sidenote', 'config.json'), JSON.stringify({ agent: 'mock', contentDir: ['content', 'notes'] }));
+const note = 'notes/todo.md';
+await mkdir(join(root, 'notes'), { recursive: true });
+await writeFile(join(root, note), 'Write the launch post.\n');
+await mkdir(join(root, 'other'), { recursive: true });
+await writeFile(join(root, 'other', 'readme.md'), 'Out of scope.\n');
 
 const git = (...args) => execFileSync('git', args, { cwd: root });
 git('init', '-q');
@@ -89,6 +95,22 @@ try {
   const accepted = await post(`/comments/${comment.id}/accept`);
   check(accepted.status === 'resolved', 'accept marks resolved');
   check((await onDisk()).includes('RAG RETRIEVES DOCUMENTS'), 'accept keeps the edit');
+
+  // A second content folder is in scope; a folder outside contentDir is not.
+  const outside = await fetch(`${base}/comments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ file: 'other/readme.md', startOffset: 0, endOffset: 13, body: 'x' }),
+  });
+  check(outside.status === 400, 'a file outside every content folder is refused');
+  const n = await post('/comments', { file: note, startOffset: 0, endOffset: 22, body: 'louder' });
+  check(n.status === 'open', 'a file in the second content folder is accepted');
+
+  // Resolving another file must not undo the first file's accepted, uncommitted edit.
+  await post(`/comments/${n.id}/resolve`);
+  await waitFor(n.id, (c) => c.status === 'resolving' && c.diff);
+  check((await readFile(join(root, note), 'utf8')).startsWith('WRITE THE LAUNCH POST.'), 'second file edited');
+  check((await onDisk()).includes('RAG RETRIEVES DOCUMENTS'), 'first file keeps its edit after another file resolves');
 
   // Ask mode: agent answers in the thread and never edits the file.
   const titleStart = original.indexOf('Title');

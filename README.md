@@ -88,7 +88,7 @@ both for each framework.
 }
 ```
 
-`askModel` / `resolveModel` are optional. Ask/Reply default to a fast model; Resolve keeps the agent's default. See [TESTING.md](./TESTING.md) to try the full loop, with or without an LLM.
+`contentDir` is where sidenote may edit markdown. It can be a list, and `init` lists every folder your framework keeps pages in (for Astro, `["src/content", "src/pages"]`). `askModel` / `resolveModel` are optional. Ask/Reply default to a fast model; Resolve keeps the agent's default. See [TESTING.md](./TESTING.md) to try the full loop, with or without an LLM.
 
 ## Layout
 

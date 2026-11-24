@@ -14,7 +14,8 @@
       "cwd": "{workspace}/packages/overlay/demo",
       "ready": {"url": "http://127.0.0.1:4612/"}
     },
-    "playground": {"command": ["python3", "-m", "http.server", "4613", "--bind", "127.0.0.1"], "cwd": "{workspace}/packages/overlay/playground/dist", "ready": {"url": "http://127.0.0.1:4613/"}}
+    "playground": {"command": ["python3", "-m", "http.server", "4613", "--bind", "127.0.0.1"], "cwd": "{workspace}/packages/overlay/playground/dist", "ready": {"url": "http://127.0.0.1:4613/"}},
+    "daemon-astro": {"command": ["node", "{workspace}/packages/daemon/server.js"], "env": {"SIDENOTE_PORT": "4614", "SIDENOTE_ROOT": "{workspace}/eyes/fixtures/astro-site"}, "ready": {"url": "http://localhost:4614/health"}}
   },
   "cases": [
     {"id": "help", "argv": ["--help"], "exit": 0, "stdout_contains": ["usage: sidenote", "init", "dev"]},
@@ -132,6 +133,31 @@
        {"fill": "#sn-pop textarea", "text": "cut this"},
        {"click": "#sn-pop [data-sn-save]"},
        {"expect_count": ".sn-card", "count": 1}
+     ]}},
+    {"id": "init-config-resolves-astro-pages", "note": "the config init writes must let the daemon resolve every page the printed steps instrument", "workspace": "temp", "setup": ["mkdir -p eyes/fixtures/astro-site/src/pages && printf -- '---\\nlayout: ../layouts/L.astro\\n---\\n\\nA page to comment on.\\n' > eyes/fixtures/astro-site/src/pages/post.md", "cd eyes/fixtures/astro-site && node ../../../bin/sidenote.js init --agent mock > /dev/null", "cd eyes/fixtures/astro-site && git init -q && git add -A && git -c user.email=eyes@local -c user.name=eyes commit -qm init"], "services": ["daemon-astro"], "command": ["bash", "-c", "set -e; A=http://localhost:4614; for f in src/pages/post.md src/content/blog/hello.md; do t=$(node -e \"const s=require('fs').readFileSync('eyes/fixtures/astro-site/'+process.argv[1],'utf8');const p=s.indexOf('Hello from Astro.')>=0?'Hello from Astro.':'A page to comment on.';const i=s.indexOf(p);console.log(JSON.stringify({file:process.argv[1],startOffset:i,endOffset:i+p.length,body:'louder'}))\" $f); curl -s -o /dev/null -w \"create $f %{http_code}\\n\" -H 'Content-Type: application/json' -d \"$t\" $A/comments; done; curl -s -X POST $A/resolve-all | node -e \"let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{for(const r of JSON.parse(d))console.log('resolved',r.file)})\""], "argv": [], "exit": 0, "check_width": false, "stdout_contains": ["create src/pages/post.md 201", "create src/content/blog/hello.md 201", "resolved src/pages/post.md", "resolved src/content/blog/hello.md"], "files": {"eyes/fixtures/astro-site/src/pages/post.md": {"contains": ["A PAGE TO COMMENT ON."]}, "eyes/fixtures/astro-site/src/content/blog/hello.md": {"contains": ["HELLO FROM ASTRO.", "title: Hello"]}}},
+    {"id": "playground-overlapping-proposals", "note": "two proposals for one paragraph: accepting the second after the first must not splice into the changed text", "workspace": "temp", "services": ["playground"], "setup": ["node packages/overlay/build-playground.js"],
+     "page": {"viewport": "desktop", "steps": [
+       {"goto": "http://127.0.0.1:4613/index.html"},
+       {"wait_for": "#sn-rail"},
+       {"select_text": "article p"},
+       {"click": "#sn-add"},
+       {"fill": "#sn-pop textarea", "text": "tighten"},
+       {"click": "#sn-pop [data-sn-save]"},
+       {"select_text": "article p"},
+       {"click": "#sn-add"},
+       {"fill": "#sn-pop textarea", "text": "also shorter"},
+       {"click": "#sn-pop [data-sn-save]"},
+       {"expect_count": ".sn-card", "count": 2},
+       {"click": ".sn-card [data-resolve]"},
+       {"wait_for": ".sn-card .sn-diff"},
+       {"click": ".sn-card:nth-child(2) [data-resolve]"},
+       {"expect_count": ".sn-card .sn-diff", "count": 2},
+       {"click": ".sn-card [data-accept]"},
+       {"wait_for": ".sn-card .sn-done"},
+       {"click": ".sn-card:nth-child(2) [data-accept]"},
+       {"wait_for": ".sn-card .sn-stale"},
+       {"expect_text": "Every draft hides a better post.", "in": "article p"},
+       {"expect_text": "Read it where readers will", "in": "article"}
      ]}}
   ]
 }

@@ -10,8 +10,8 @@ npm install --save-dev remark-sidenote
 npx sidenote-cli init --agent claude   # or --agent codex
 ```
 
-`init` sees `docusaurus.config.js` and sets `contentDir` to `docs` (or
-`blog` if there is no `docs` folder).
+`init` sees `docusaurus.config.js` and sets `contentDir` to whichever of
+`docs`, `blog` and `src/pages` exist, so comments work on all of them.
 
 ## 2. Stamp source offsets and load the overlay
 
