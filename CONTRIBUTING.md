@@ -4,12 +4,13 @@ Thanks for your interest. sidenote is small and dependency-light on purpose; con
 
 ## Getting set up
 
-Each package is self-contained, so setup is minimal.
+Each package is self-contained, so setup is minimal. The daemon has no dependencies.
 
 ```bash
 git clone https://github.com/bharadwaj-pendyala/sidenote.git
 cd sidenote
-npm install --prefix packages/remark-plugin   # the only package with deps
+npm install --prefix packages/remark-plugin   # plugin deps (npm test)
+npm install --prefix packages/overlay         # remark for the demo and playground builds (eyes run)
 ```
 
 ## Running the checks

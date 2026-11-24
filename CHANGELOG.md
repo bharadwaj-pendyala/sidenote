@@ -29,6 +29,15 @@ share a version number.
   busy page.
 - On phones, the comment rail no longer covers the page; it sits under the
   content.
+- `contentDir` can be a list, and `init` lists every folder the framework
+  keeps pages in. Before, comments on Astro `src/pages`, Docusaurus `blog`
+  (next to `docs`) or Next.js `app/*.mdx` were refused by the daemon.
+- Resolving comments on a second file no longer reverts the first file's
+  edit while it waits for Accept (most visible with Resolve all).
+- In the playground, accepting a proposal whose passage another accepted
+  edit already changed is refused as stale instead of corrupting the text.
+- The comment box stays on screen on 320px phones.
+- The "source changed" label meets WCAG AA contrast.
 
 ## 0.0.1
 

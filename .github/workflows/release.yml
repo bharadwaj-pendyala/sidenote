@@ -31,12 +31,20 @@ jobs:
           done
       - run: npm ci --prefix packages/remark-plugin
       - run: npm test
+      # Each package is skipped when its version is already on npm, so a re-run
+      # after a partial release finishes the other one instead of failing.
       - name: Publish remark-sidenote
-        run: npm publish --provenance --access public
+        run: |
+          v=$(node -p "require('./package.json').version")
+          if npm view "remark-sidenote@$v" version >/dev/null 2>&1; then echo "remark-sidenote@$v is already published"; exit 0; fi
+          npm publish --provenance --access public
         working-directory: packages/remark-plugin
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Publish sidenote-cli
-        run: npm publish --provenance --access public
+        run: |
+          v=$(node -p "require('./package.json').version")
+          if npm view "sidenote-cli@$v" version >/dev/null 2>&1; then echo "sidenote-cli@$v is already published"; exit 0; fi
+          npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
