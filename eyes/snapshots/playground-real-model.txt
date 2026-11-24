@@ -1,0 +1,125 @@
+page http://127.0.0.1:4613/index.html?anthropic_base_url=http://127.0.0.1:4616
+   1. goto http://127.0.0.1:4613/index.html?anthropic_base_url=http://127.0.0.1:4616  [pass]
+   2. wait_for #sn-rail  [pass]
+   3. click #pg-real-toggle  [pass]
+   4. fill #pg-key  [pass]
+   5. click #pg-use  [pass]
+   6. expect_text Real model on  [pass]
+   7. select_text article p  [pass]
+   8. click #sn-add  [pass]
+   9. fill #sn-pop textarea  [pass]
+  10. click #sn-pop [data-sn-save]  [pass]
+  11. click .sn-card [data-resolve]  [pass]
+  12. wait_for .sn-card .sn-diff  [pass]
+  13. expect_text +EDITED BY FAKE CLAUDE.  [pass]
+  14. click .sn-card [data-accept]  [pass]
+  15. wait_for .sn-card .sn-done  [pass]
+  16. expect_text EDITED BY FAKE CLAUDE.  [pass]
+  17. select_text article li  [pass]
+  18. click #sn-add  [pass]
+  19. fill #sn-pop textarea  [pass]
+  20. click #sn-pop [data-sn-save]  [pass]
+  21. click .sn-card:nth-child(2) [data-ask]  [pass]
+  22. wait_for .sn-card:nth-child(2) .sn-turn.agent  [pass]
+  23. expect_text FAKE CLAUDE ANSWER  [pass]
+  24. select_text article p:nth-of-type(2)  [pass]
+  25. click #sn-add  [pass]
+  26. fill #sn-pop textarea  [pass]
+  27. click #sn-pop [data-sn-save]  [pass]
+  28. click .sn-card:nth-child(3) [data-resolve]  [pass]
+  29. wait_for .sn-card:nth-child(3) .sn-diff  [pass]
+  30. click .sn-card:nth-child(3) [data-accept]  [pass]
+  31. wait_for .sn-card:nth-child(3) .sn-done  [pass]
+  32. expect_count article a[href='https://example.com/docs']  [pass]
+  33. select_text article p:nth-of-type(3)  [pass]
+  34. click #sn-add  [pass]
+  35. fill #sn-pop textarea  [pass]
+  36. click #sn-pop [data-sn-save]  [pass]
+  37. click .sn-card:nth-child(4) [data-resolve]  [pass]
+  38. wait_for .sn-card:nth-child(4) .sn-diff  [pass]
+  39. click .sn-card:nth-child(4) [data-accept]  [pass]
+  40. wait_for .sn-card:nth-child(4) .sn-done  [pass]
+  41. expect_text See this for more.  [pass]
+  42. expect_count article a[href^='javascript']  [pass]
+  43. select_text article p:nth-of-type(4)  [pass]
+  44. click #sn-add  [pass]
+  45. fill #sn-pop textarea  [pass]
+  46. click #sn-pop [data-sn-save]  [pass]
+  47. click .sn-card:nth-child(5) [data-resolve]  [pass]
+  48. expect_text cut off before it finished  [pass]
+  49. wait_for .sn-card:nth-child(5) [data-resolve]  [pass]
+  50. expect_count .sn-card:nth-child(5) .sn-diff  [pass]
+  51. expect_text A short checklist for the second pass:  [pass]
+--- visible text
+This is the sidenote live playground. It is a rendered blog post, like yours.
+Select a sentence in the post and press + Comment.
+Press Ask to discuss it, or Resolve to get the edit as a diff.
+Accept it and the page updates.
+The agent here is a scripted stand-in that runs in your browser. On your own site, sidenote uses claude or codex and edits the real markdown file.
+GitHub
+Install
+npm
+Reset playground
+Try it with a real model, using your own Anthropic API key
+
+Ask and Resolve then call Claude from your browser with your key. The key stays in this tab's memory only: it is not saved, and it is sent only to the Anthropic API. Reloading the page forgets it. Requests are billed to your key.
+
+Real model on: Ask and Resolve now use claude-opus-5-5 with your key.
+
+Forget the key
+Notes on editing your own writing
+
+EDITED BY FAKE CLAUDE.
+
+Read it where readers will
+
+See the docs for more.
+
+Comment first, fix later
+
+See this for more.
+
+A short checklist for the second pass:
+
+Cut the throat-clearing at the very start.
+Name the thing instead of describing it.
+Read it once on your phone.
+
+That is the whole loop: read the page, leave comments, and let the edits come back as a diff you can accept or reject.
+
+Use it on your own Astro, Docusaurus, Next.js or remark site:
+
+npm install --save-dev remark-sidenote
+npx sidenote-cli init
+npx sidenote-cli dev
+
+sidenote on GitHub. MIT licensed. Local-first: your files never leave your machine.
+
+SIDENOTE
+Clear resolved
+So basically, every draft you write is kind of hiding a better post inside of it, and the
+tighten this
+resolved
+Delete
+- Cut the throat-clearing at the very start.
+is this needed?
+FAKE CLAUDE ANSWER: yes, trim the intro.
+Reply
+Resolve
+Delete
+Reading your markdown in an editor is not the same as reading the rendered page. Line brea
+add a LINK to the docs
+resolved
+Delete
+When you spot something, resist the urge to fix it right away. Leave a note that says what
+add a BADLINK here
+resolved
+Delete
+A short checklist for the second pass:
+TRUNCATE
+● reading posts/editing.md
+● asking claude-opus-5-5 to edit lines 13-13
+error: the reply was cut off before it finished. Try a shorter passage.
+Ask
+Resolve
+Delete

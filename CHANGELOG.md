@@ -3,6 +3,16 @@
 All notable changes to `sidenote-cli` and `remark-sidenote`. Both packages
 share a version number.
 
+## Unreleased
+
+### Added
+
+- **Playground: bring your own key.** Paste an Anthropic API key into the
+  playground and Ask and Resolve call Claude (`claude-opus-5-5`) from the
+  browser instead of the scripted agent. The key is kept in the tab's memory
+  only and sent only to the Anthropic API. The SDK is loaded only when a
+  visitor opts in.
+
 ## 0.1.0
 
 ### Added

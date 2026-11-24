@@ -10,7 +10,7 @@
 
 ![sidenote in action: select a passage, comment, ask, and resolve into a git diff](docs/images/intro.gif)
 
-**[Try it in your browser →](https://sidenote-playground.vercel.app)** No install: a real rendered post, the real overlay, and a scripted stand-in for the agent.
+**[Try it in your browser →](https://sidenote-playground.vercel.app)** No install: a real rendered post, the real overlay, and a scripted stand-in for the agent. Have an Anthropic API key? Paste it into the playground to see Claude do the edits; the key stays in that browser tab.
 
 sidenote is a review layer for content authors. You review your own site on the local dev server, select a passage, and leave a comment, exactly like commenting in Google Docs or Word. A local coding agent (`claude` or `codex`) either answers your question in place or patches the source markdown and hands you back a git diff to accept or reject.
 

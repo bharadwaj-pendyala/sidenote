@@ -1,7 +1,9 @@
 // In-browser stand-in for the sidenote daemon, used by the hosted playground.
 // It implements the overlay's API (window.SIDENOTE_API) against the post's
 // markdown, kept in this tab, with a scripted agent instead of claude/codex.
-// Nothing leaves the browser. The real daemon lives in packages/daemon.
+// Nothing leaves the browser unless the visitor turns on a real model with
+// their own API key (see "optional real model" below). The real daemon lives
+// in packages/daemon.
 (() => {
   const ORIGINAL = window.SIDENOTE_PLAYGROUND.source;
   const FILE = window.SIDENOTE_PLAYGROUND.file;
@@ -110,11 +112,26 @@
   // --- applying an accepted edit to the page -----------------------------------
   const escapeHtml = (s) =>
     s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
-  const inline = (md) =>
-    escapeHtml(md.replace(/^(\s*(?:[-*+]|\d+\.|#{1,6}|>)\s+)/, ''))
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  // A small inline renderer for accepted edits: code spans, links, bold and
+  // italics. Code spans and finished links are set aside first, so emphasis
+  // never rewrites a URL and link syntax inside backticks stays literal.
+  // Links keep only http(s) targets; anything else (javascript:, data:) shows
+  // as its label. The input is HTML-escaped first, so it is safe in href.
+  const emphasis = (text) =>
+    text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  const inline = (md) => {
+    const held = [];
+    const hold = (html) => `\u0000${held.push(html) - 1}\u0000`;
+    const text = escapeHtml(md.replace(/^(\s*(?:[-*+]|\d+\.|#{1,6}|>)\s+)/, ''))
+      .replace(/\u0000/g, '')
+      .replace(/`([^`]+)`/g, (_, code) => hold(`<code>${code}</code>`))
+      .replace(/\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)/g, (_, label, url) =>
+        /^https?:\/\//i.test(url)
+          ? hold(`<a href="${url}" rel="noopener noreferrer">${emphasis(label)}</a>`)
+          : emphasis(label)
+      );
+    return emphasis(text).replace(/\u0000(\d+)\u0000/g, (_, i) => held[Number(i)]);
+  };
 
   // Saved comments already carry shifted offsets, so a replay on load skips them.
   function applyEdit({ start, end, text }, shiftComments = false) {
@@ -166,12 +183,22 @@
   const now = () => new Date().toISOString();
   const lineOf = (offset) => source.slice(0, offset).split('\n').length;
 
-  async function runAsk(c, emit) {
+  // The agent is fixed when the action starts: one begun on the scripted agent
+  // never turns into a billed API call because a key arrived meanwhile.
+  async function runAsk(c, emit, agent = real) {
     emit({ kind: 'activity', text: `reading ${FILE}` });
     await sleep(350);
     emit({ kind: 'activity', text: `looking at lines ${lineOf(c.startOffset)}-${lineOf(c.endOffset)}` });
     await sleep(250);
-    const words = answer(c).split(/(\s+)/);
+    let reply;
+    if (agent) {
+      if (agent !== real) throw new Error('the key was forgotten before this request was sent.');
+      emit({ kind: 'activity', text: `asking ${agent.model}` });
+      reply = await agent.ask({ file: FILE, passage: c.quotedText, comment: c, post: source });
+    } else {
+      reply = answer(c);
+    }
+    const words = reply.split(/(\s+)/);
     for (const w of words) {
       emit({ kind: 'text', text: w });
       if (w.trim()) await sleep(18);
@@ -182,11 +209,16 @@
     return c;
   }
 
-  async function runResolve(c, emit) {
+  async function runResolve(c, emit, agent = real) {
     emit({ kind: 'activity', text: `reading ${FILE}` });
     await sleep(350);
     const passage = source.slice(c.startOffset, c.endOffset);
-    const next = rewrite(passage);
+    if (agent) {
+      if (agent !== real) throw new Error('the key was forgotten before this request was sent.');
+      emit({ kind: 'activity', text: `asking ${agent.model} to edit lines ${lineOf(c.startOffset)}-${lineOf(c.endOffset)}` });
+    }
+    const next = agent ? await agent.edit({ file: FILE, passage, comment: c }) : rewrite(passage);
+    if (agent && next === passage) throw new Error('the model left the passage unchanged.');
     if (!next)
       throw new Error(
         'the playground agent has no edit for this passage. Try a paragraph, or install sidenote to use claude or codex.'
@@ -289,6 +321,32 @@
       job.subs.add(onEvent);
       return () => job.subs.delete(onEvent);
     },
+  };
+
+  // --- optional real model ("bring your own key") ---------------------------
+  // The key is held only in this closure: never in localStorage, never in the
+  // page URL. For tests, a page served from localhost may name a localhost API
+  // (?anthropic_base_url=http://127.0.0.1:PORT); any other value is ignored,
+  // so a crafted link can never send a visitor's key elsewhere.
+  let real = null;
+  const isLocal = (host) => host === 'localhost' || host === '127.0.0.1';
+  function testBaseURL() {
+    try {
+      const value = new URLSearchParams(location.search).get('anthropic_base_url');
+      if (!value || !isLocal(location.hostname)) return undefined;
+      const url = new URL(value);
+      return url.protocol === 'http:' && isLocal(url.hostname) ? url.origin : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  window.SIDENOTE_PLAYGROUND.useKey = async (apiKey) => {
+    const { createRealAgent } = await import('./real-agent.js');
+    real = createRealAgent({ apiKey, baseURL: testBaseURL() });
+    return real.model;
+  };
+  window.SIDENOTE_PLAYGROUND.forgetKey = () => {
+    real = null;
   };
 
   window.SIDENOTE_PLAYGROUND.reset = () => {

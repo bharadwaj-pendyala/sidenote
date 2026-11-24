@@ -19,3 +19,5 @@ jobs:
         run: npm test
       - name: Build the playground
         run: npm ci --prefix packages/overlay && node packages/overlay/build-playground.js
+      - name: Check the playground's real-model agent
+        run: node packages/overlay/verify-real-agent.mjs
