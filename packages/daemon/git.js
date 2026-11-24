@@ -1,5 +1,5 @@
 import { execFile, spawn } from 'node:child_process';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdir, readFile, readlink, rm, symlink, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { promisify } from 'node:util';
 
@@ -39,30 +39,59 @@ export async function isClean(projectRoot, file) {
   return stdout.trim() === '';
 }
 
-// Exact bytes of each file (null when it does not exist), so work the author
-// had not committed can be put back byte for byte after an agent run.
+// Exact state of each file — bytes, permissions, or a symlink's target; null
+// when it does not exist — so work the author had not committed can be put back
+// as it was after an agent run. Only a missing file counts as absent: any other
+// read error throws, so the caller stops before the agent runs.
 export async function snapshotFiles(projectRoot, files) {
   const snapshot = new Map();
   for (const file of files) {
-    snapshot.set(file, await readFile(resolve(projectRoot, file)).catch(() => null));
+    const abs = resolve(projectRoot, file);
+    let info;
+    try {
+      info = await lstat(abs);
+    } catch (err) {
+      if (err.code === 'ENOENT') {
+        snapshot.set(file, null);
+        continue;
+      }
+      throw new Error(`cannot snapshot ${file} before the agent runs: ${err.message}`);
+    }
+    snapshot.set(
+      file,
+      info.isSymbolicLink()
+        ? { link: await readlink(abs) }
+        : { bytes: await readFile(abs), mode: info.mode & 0o7777 }
+    );
   }
   return snapshot;
 }
+
+const sameState = (a, b) =>
+  a === null || b === null
+    ? a === b
+    : a.link !== undefined || b.link !== undefined
+      ? a.link === b.link
+      : a.mode === b.mode && a.bytes.equals(b.bytes);
 
 // Put every snapshotted file back as it was: rewritten if the agent changed,
 // reset or deleted it, removed if it did not exist before. Returns the files
 // it had to restore.
 export async function restoreFiles(projectRoot, snapshot) {
   const restored = [];
-  for (const [file, bytes] of snapshot) {
+  for (const [file, before] of snapshot) {
     const abs = resolve(projectRoot, file);
-    const now = await readFile(abs).catch(() => null);
-    if (bytes === null ? now === null : now !== null && bytes.equals(now)) continue;
-    if (bytes === null) {
-      await rm(abs, { force: true });
-    } else {
+    const [now] = (await snapshotFiles(projectRoot, [file])).values();
+    if (sameState(before, now)) continue;
+    await rm(abs, { force: true });
+    if (before !== null) {
       await mkdir(dirname(abs), { recursive: true });
-      await writeFile(abs, bytes);
+      if (before.link !== undefined) {
+        await symlink(before.link, abs);
+      } else {
+        await writeFile(abs, before.bytes);
+        await chmod(abs, before.mode);
+      }
     }
     restored.push(file);
   }

@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { spawn } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdtemp, mkdir, readFile, readlink, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -143,21 +143,35 @@ try {
   await writeFile(join(dir, 'reset.md'), 'also mine\n');
   await writeFile(join(dir, 'deleted.md'), 'keep me\n');
   await writeFile(join(dir, 'blob.bin'), binary);
-  const snap = await snapshotFiles(dir, ['edited.md', 'reset.md', 'deleted.md', 'blob.bin', 'absent.md']);
+  await writeFile(join(dir, 'run.sh'), '#!/bin/sh\necho hi\n');
+  await chmod(join(dir, 'run.sh'), 0o755);
+  await symlink('edited.md', join(dir, 'link.md'));
+  const snap = await snapshotFiles(dir, ['edited.md', 'reset.md', 'deleted.md', 'blob.bin', 'absent.md', 'run.sh', 'link.md']);
   // What a stray agent might do: edit, reset to the committed text, delete, create.
   await writeFile(join(dir, 'edited.md'), 'agent\n');
   await writeFile(join(dir, 'reset.md'), 'committed\n');
   await rm(join(dir, 'deleted.md'));
   await writeFile(join(dir, 'blob.bin'), Buffer.from('agent'));
   await writeFile(join(dir, 'absent.md'), 'new\n');
+  await rm(join(dir, 'run.sh'));
+  await rm(join(dir, 'link.md'));
   const restored = await restoreFiles(dir, snap);
-  check(restored.length === 5, 'restore reports every file it put back');
+  check(restored.length === 7, 'restore reports every file it put back');
+  check(((await stat(join(dir, 'run.sh'))).mode & 0o777) === 0o755, 'a deleted executable comes back executable');
+  check((await readlink(join(dir, 'link.md'))) === 'edited.md', 'a deleted symlink comes back as the same symlink');
   check((await readFile(join(dir, 'edited.md'), 'utf8')) === 'mine\n', 'an edited dirty file is restored');
   check((await readFile(join(dir, 'reset.md'), 'utf8')) === 'also mine\n', 'a reset dirty file is restored');
   check((await readFile(join(dir, 'deleted.md'), 'utf8')) === 'keep me\n', 'a deleted dirty file is restored');
   check(binary.equals(await readFile(join(dir, 'blob.bin'))), 'a non-UTF-8 file is restored byte for byte');
   check(!(await readFile(join(dir, 'absent.md')).then(() => true, () => false)), 'a file that did not exist is removed again');
   check((await restoreFiles(dir, snap)).length === 0, 'restoring an unchanged tree touches nothing');
+  await mkdir(join(dir, 'locked'));
+  await writeFile(join(dir, 'locked', 'x.md'), 'x');
+  await chmod(join(dir, 'locked'), 0o000);
+  const unreadable = await snapshotFiles(dir, ['locked/x.md']).then(() => 'read', (e) => e.message);
+  await chmod(join(dir, 'locked'), 0o755);
+  // root reads through 0o000; elsewhere the snapshot must refuse, not record "absent"
+  check(process.getuid?.() === 0 || unreadable.startsWith('cannot snapshot'), 'an unreadable dirty file stops the run instead of counting as absent');
 }
 
 // --- an explicit empty contentDir allows nothing, not the whole project
