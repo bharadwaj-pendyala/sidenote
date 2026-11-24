@@ -89,7 +89,7 @@ needs no LLM.
 
 ```bash
 pip install 'userlens[browser]' && python -m playwright install chromium
-eyes run                        # 7 cases: CLI, plus the comment flow at 1280px and 800px
+eyes run                        # 9 cases: CLI, plus the comment flow at 1280px and 800px
 eyes approve --case help        # accept output you reviewed
 ```
 

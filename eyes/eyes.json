@@ -18,6 +18,8 @@
   "cases": [
     {"id": "help", "argv": ["--help"], "exit": 0, "stdout_contains": ["usage: sidenote", "init", "dev"]},
     {"id": "no-args", "argv": [], "exit": 0, "stdout_contains": ["usage: sidenote"]},
+    {"id": "version", "argv": ["--version"], "exit": 0, "stdout_regex": ["^\\d+\\.\\d+\\.\\d+$"]},
+    {"id": "version-short", "argv": ["-v"], "exit": 0, "stdout_regex": ["^\\d+\\.\\d+\\.\\d+$"]},
     {"id": "unknown-command", "argv": ["deev"], "exit": 2,
      "stderr_contains": ["unknown command 'deev'", "did you mean 'dev'"]},
     {"id": "init-writes-config", "workspace": "temp", "cwd": "eyes/fixtures/blog",
