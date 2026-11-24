@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { spawn } from 'node:child_process';
-import { chmod, mkdtemp, mkdir, readFile, readlink, rm, stat, symlink, writeFile } from 'node:fs/promises';
+import { chmod, link, mkdtemp, mkdir, readFile, readlink, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -140,6 +140,7 @@ try {
   const dir = await mkdtemp(join(tmpdir(), 'sidenote-snap-'));
   const binary = Buffer.from([0xff, 0xfe, 0x00, 0x80, 0x41]); // not valid UTF-8
   await writeFile(join(dir, 'edited.md'), 'mine\n');
+  await link(join(dir, 'edited.md'), join(dir, 'edited-alias.md'));
   await writeFile(join(dir, 'reset.md'), 'also mine\n');
   await writeFile(join(dir, 'deleted.md'), 'keep me\n');
   await writeFile(join(dir, 'blob.bin'), binary);
@@ -160,6 +161,7 @@ try {
   check(((await stat(join(dir, 'run.sh'))).mode & 0o777) === 0o755, 'a deleted executable comes back executable');
   check((await readlink(join(dir, 'link.md'))) === 'edited.md', 'a deleted symlink comes back as the same symlink');
   check((await readFile(join(dir, 'edited.md'), 'utf8')) === 'mine\n', 'an edited dirty file is restored');
+  check((await readFile(join(dir, 'edited-alias.md'), 'utf8')) === 'mine\n', 'a restored file keeps its hard links');
   check((await readFile(join(dir, 'reset.md'), 'utf8')) === 'also mine\n', 'a reset dirty file is restored');
   check((await readFile(join(dir, 'deleted.md'), 'utf8')) === 'keep me\n', 'a deleted dirty file is restored');
   check(binary.equals(await readFile(join(dir, 'blob.bin'))), 'a non-UTF-8 file is restored byte for byte');

@@ -81,16 +81,25 @@ export async function restoreFiles(projectRoot, snapshot) {
   const restored = [];
   for (const [file, before] of snapshot) {
     const abs = resolve(projectRoot, file);
-    const [now] = (await snapshotFiles(projectRoot, [file])).values();
-    if (sameState(before, now)) continue;
-    await rm(abs, { force: true });
-    if (before !== null) {
-      await mkdir(dirname(abs), { recursive: true });
-      if (before.link !== undefined) {
-        await symlink(before.link, abs);
-      } else {
-        await writeFile(abs, before.bytes);
-        await chmod(abs, before.mode);
+    // A file the agent left unreadable compares as changed and is restored.
+    const now = await snapshotFiles(projectRoot, [file]).then((m) => m.get(file), () => undefined);
+    if (now !== undefined && sameState(before, now)) continue;
+    const regularToRegular = before?.bytes && now !== null && now?.link === undefined;
+    if (regularToRegular) {
+      // Same type: write in place, which keeps the inode (and any hard links).
+      await chmod(abs, before.mode | 0o200).catch(() => {});
+      await writeFile(abs, before.bytes);
+      await chmod(abs, before.mode);
+    } else {
+      await rm(abs, { force: true });
+      if (before !== null) {
+        await mkdir(dirname(abs), { recursive: true });
+        if (before.link !== undefined) {
+          await symlink(before.link, abs);
+        } else {
+          await writeFile(abs, before.bytes);
+          await chmod(abs, before.mode);
+        }
       }
     }
     restored.push(file);
