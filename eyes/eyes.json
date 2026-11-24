@@ -186,7 +186,26 @@
        {"click": "#sn-pop [data-sn-save]"},
        {"click": ".sn-card:nth-child(2) [data-ask]"},
        {"wait_for": ".sn-card:nth-child(2) .sn-turn.agent"},
-       {"expect_text": "FAKE CLAUDE ANSWER", "in": ".sn-card:nth-child(2) .sn-turn.agent"}
+       {"expect_text": "FAKE CLAUDE ANSWER", "in": ".sn-card:nth-child(2) .sn-turn.agent"},
+       {"select_text": "article p:nth-of-type(2)"},
+       {"click": "#sn-add"},
+       {"fill": "#sn-pop textarea", "text": "add a LINK to the docs"},
+       {"click": "#sn-pop [data-sn-save]"},
+       {"click": ".sn-card:nth-child(3) [data-resolve]"},
+       {"wait_for": ".sn-card:nth-child(3) .sn-diff"},
+       {"click": ".sn-card:nth-child(3) [data-accept]"},
+       {"wait_for": ".sn-card:nth-child(3) .sn-done"},
+       {"expect_count": "article a[href='https://example.com/docs']", "count": 1},
+       {"select_text": "article p:nth-of-type(3)"},
+       {"click": "#sn-add"},
+       {"fill": "#sn-pop textarea", "text": "add a BADLINK here"},
+       {"click": "#sn-pop [data-sn-save]"},
+       {"click": ".sn-card:nth-child(4) [data-resolve]"},
+       {"wait_for": ".sn-card:nth-child(4) .sn-diff"},
+       {"click": ".sn-card:nth-child(4) [data-accept]"},
+       {"wait_for": ".sn-card:nth-child(4) .sn-done"},
+       {"expect_text": "See this for more.", "in": "article"},
+       {"expect_count": "article a[href^='javascript']", "count": 0}
      ]}}
   ]
 }

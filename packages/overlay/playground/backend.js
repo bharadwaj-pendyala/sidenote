@@ -112,8 +112,13 @@
   // --- applying an accepted edit to the page -----------------------------------
   const escapeHtml = (s) =>
     s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  // Links keep only http(s) targets; anything else (javascript:, data:) shows
+  // as its label text. The URL was HTML-escaped above, so it is safe in href.
+  const link = (_, label, url) =>
+    /^https?:\/\//i.test(url) ? `<a href="${url}" rel="noopener noreferrer">${label}</a>` : label;
   const inline = (md) =>
     escapeHtml(md.replace(/^(\s*(?:[-*+]|\d+\.|#{1,6}|>)\s+)/, ''))
+      .replace(/\[([^\]]+)\]\(((?:[^()\s]|\([^()\s]*\))+)\)/g, link)
       .replace(/`([^`]+)`/g, '<code>$1</code>')
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
       .replace(/\*([^*]+)\*/g, '<em>$1</em>');
@@ -168,15 +173,18 @@
   const now = () => new Date().toISOString();
   const lineOf = (offset) => source.slice(0, offset).split('\n').length;
 
-  async function runAsk(c, emit) {
+  // The agent is fixed when the action starts: one begun on the scripted agent
+  // never turns into a billed API call because a key arrived meanwhile.
+  async function runAsk(c, emit, agent = real) {
     emit({ kind: 'activity', text: `reading ${FILE}` });
     await sleep(350);
     emit({ kind: 'activity', text: `looking at lines ${lineOf(c.startOffset)}-${lineOf(c.endOffset)}` });
     await sleep(250);
     let reply;
-    if (real) {
-      emit({ kind: 'activity', text: `asking ${real.model}` });
-      reply = await real.ask({ file: FILE, passage: c.quotedText, comment: c, post: source });
+    if (agent) {
+      if (agent !== real) throw new Error('the key was forgotten before this request was sent.');
+      emit({ kind: 'activity', text: `asking ${agent.model}` });
+      reply = await agent.ask({ file: FILE, passage: c.quotedText, comment: c, post: source });
     } else {
       reply = answer(c);
     }
@@ -191,13 +199,16 @@
     return c;
   }
 
-  async function runResolve(c, emit) {
+  async function runResolve(c, emit, agent = real) {
     emit({ kind: 'activity', text: `reading ${FILE}` });
     await sleep(350);
     const passage = source.slice(c.startOffset, c.endOffset);
-    if (real) emit({ kind: 'activity', text: `asking ${real.model} to edit lines ${lineOf(c.startOffset)}-${lineOf(c.endOffset)}` });
-    const next = real ? await real.edit({ file: FILE, passage, comment: c }) : rewrite(passage);
-    if (real && next === passage) throw new Error('the model left the passage unchanged.');
+    if (agent) {
+      if (agent !== real) throw new Error('the key was forgotten before this request was sent.');
+      emit({ kind: 'activity', text: `asking ${agent.model} to edit lines ${lineOf(c.startOffset)}-${lineOf(c.endOffset)}` });
+    }
+    const next = agent ? await agent.edit({ file: FILE, passage, comment: c }) : rewrite(passage);
+    if (agent && next === passage) throw new Error('the model left the passage unchanged.');
     if (!next)
       throw new Error(
         'the playground agent has no edit for this passage. Try a paragraph, or install sidenote to use claude or codex.'

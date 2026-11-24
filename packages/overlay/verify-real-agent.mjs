@@ -38,6 +38,11 @@ try {
   check((await agent.edit(args)) === 'EDITED BY FAKE CLAUDE.', 'a good key returns the rewritten passage');
   check((await agent.ask(args)).startsWith('FAKE CLAUDE ANSWER'), 'a good key returns an answer');
 
+  const cut = await agent
+    .edit({ ...args, comment: { body: 'TRUNCATE', thread: [] } })
+    .then((text) => `no error: ${text}`, (err) => err.message);
+  check(cut.includes('cut off'), `a rewrite cut off at max_tokens is refused (${cut})`);
+
   const bad = createRealAgent({ apiKey: 'sk-ant-wrong', baseURL });
   const message = await bad.edit(args).then(() => 'no error', (err) => err.message);
   check(message.includes('API key was rejected'), `a rejected key is explained (${message})`);
@@ -45,7 +50,7 @@ try {
 
   const requests = (await readFile(log, 'utf8')).trim().split('\n').map((line) => JSON.parse(line));
   const good = requests.filter((r) => r.key_ok);
-  check(good.length === 2, 'two requests carried the good key');
+  check(good.length === 3, 'three requests carried the good key');
   check(
     good.every((r) => r.body.model === 'claude-opus-5-5' && r.body.output_config?.effort === 'low' && r.body.fallbacks === 'default'),
     'requests ask for claude-opus-5-5 at low effort with server-side fallbacks'

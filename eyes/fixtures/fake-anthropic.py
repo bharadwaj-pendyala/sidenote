@@ -54,11 +54,21 @@ class Handler(BaseHTTPRequestHandler):
         if key_of(self.headers) != KEY:
             return self.reply(401, {"type": "error", "error": {"type": "authentication_error", "message": "invalid x-api-key"}})
         prompt = body["messages"][0]["content"]
-        text = "EDITED BY FAKE CLAUDE." if "Rewrite ONLY" in prompt else "FAKE CLAUDE ANSWER: yes, trim the intro."
+        stop = "end_turn"
+        if "Reviewer: TRUNCATE" in prompt:  # the model ran out of tokens mid-rewrite
+            text, stop = "EDITED BY FAKE CLAU", "max_tokens"
+        elif "Reviewer: add a BADLINK" in prompt:
+            text = "See [this](javascript:alert(1)) for more."
+        elif "Reviewer: add a LINK" in prompt:
+            text = "See [the docs](https://example.com/docs) for more."
+        elif "Rewrite ONLY" in prompt:
+            text = "EDITED BY FAKE CLAUDE."
+        else:
+            text = "FAKE CLAUDE ANSWER: yes, trim the intro."
         self.reply(200, {
             "id": "msg_fake", "type": "message", "role": "assistant", "model": body.get("model"),
             "content": [{"type": "text", "text": text}],
-            "stop_reason": "end_turn", "stop_sequence": None,
+            "stop_reason": stop, "stop_sequence": None,
             "usage": {"input_tokens": 10, "output_tokens": 5},
         })
 

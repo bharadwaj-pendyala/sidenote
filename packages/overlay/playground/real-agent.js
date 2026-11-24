@@ -65,6 +65,9 @@ export function createRealAgent({ apiKey, baseURL }) {
       throw new Error(explain(err));
     }
     if (response.stop_reason === 'refusal') throw new Error('the model declined this request.');
+    // A reply cut off by max_tokens is incomplete: never offer it as a rewrite.
+    if (response.stop_reason === 'max_tokens')
+      throw new Error('the reply was cut off before it finished. Try a shorter passage.');
     const text = response.content
       .filter((block) => block.type === 'text')
       .map((block) => block.text)

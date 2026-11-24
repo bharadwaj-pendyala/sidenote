@@ -22,6 +22,25 @@ page http://127.0.0.1:4613/index.html?anthropic_base_url=http://127.0.0.1:4616
   21. click .sn-card:nth-child(2) [data-ask]  [pass]
   22. wait_for .sn-card:nth-child(2) .sn-turn.agent  [pass]
   23. expect_text FAKE CLAUDE ANSWER  [pass]
+  24. select_text article p:nth-of-type(2)  [pass]
+  25. click #sn-add  [pass]
+  26. fill #sn-pop textarea  [pass]
+  27. click #sn-pop [data-sn-save]  [pass]
+  28. click .sn-card:nth-child(3) [data-resolve]  [pass]
+  29. wait_for .sn-card:nth-child(3) .sn-diff  [pass]
+  30. click .sn-card:nth-child(3) [data-accept]  [pass]
+  31. wait_for .sn-card:nth-child(3) .sn-done  [pass]
+  32. expect_count article a[href='https://example.com/docs']  [pass]
+  33. select_text article p:nth-of-type(3)  [pass]
+  34. click #sn-add  [pass]
+  35. fill #sn-pop textarea  [pass]
+  36. click #sn-pop [data-sn-save]  [pass]
+  37. click .sn-card:nth-child(4) [data-resolve]  [pass]
+  38. wait_for .sn-card:nth-child(4) .sn-diff  [pass]
+  39. click .sn-card:nth-child(4) [data-accept]  [pass]
+  40. wait_for .sn-card:nth-child(4) .sn-done  [pass]
+  41. expect_text See this for more.  [pass]
+  42. expect_count article a[href^='javascript']  [pass]
 --- visible text
 This is the sidenote live playground. It is a rendered blog post, like yours.
 Select a sentence in the post and press + Comment.
@@ -45,11 +64,11 @@ EDITED BY FAKE CLAUDE.
 
 Read it where readers will
 
-Reading your markdown in an editor is not the same as reading the rendered page. Line breaks, headings and code blocks all look really different once they are styled, and problems you never noticed in the source jump out at you on the page.
+See the docs for more.
 
 Comment first, fix later
 
-When you spot something, resist the urge to fix it right away. Leave a note that says what is wrong and keep reading, because fixing as you go breaks your flow and you end up polishing a paragraph that you were actually going to cut anyway.
+See this for more.
 
 A short checklist for the second pass:
 
@@ -78,4 +97,12 @@ is this needed?
 FAKE CLAUDE ANSWER: yes, trim the intro.
 Reply
 Resolve
+Delete
+Reading your markdown in an editor is not the same as reading the rendered page. Line brea
+add a LINK to the docs
+resolved
+Delete
+When you spot something, resist the urge to fix it right away. Leave a note that says what
+add a BADLINK here
+resolved
 Delete
