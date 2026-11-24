@@ -255,6 +255,15 @@
     accept: async (id) => {
       const c = find(id);
       if (!c || c.status !== 'resolving') return c;
+      // Another accepted edit may have changed this passage since the proposal
+      // was made (two comments on one paragraph). Splicing the proposal into
+      // the old range would eat into the new text, so refuse it, like the
+      // daemon's drift guard does.
+      if (source.slice(c.startOffset, c.endOffset) !== c.quotedText) {
+        Object.assign(c, { status: 'stale', diff: null, proposed: null });
+        save();
+        return c;
+      }
       const edit = { start: c.startOffset, end: c.endOffset, text: c.proposed };
       c.status = 'resolved';
       c.endOffset = edit.start + edit.text.length;

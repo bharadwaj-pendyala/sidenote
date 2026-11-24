@@ -119,6 +119,21 @@ try {
   await page.locator('.sn-card [data-del]').click();
   await page.waitForFunction(() => document.querySelectorAll('.sn-card').length === 0);
   check((await daemonComments()).length === 0, 'delete removes comment');
+
+  // On a 320px phone the comment box must stay on screen, padding included.
+  const phone = await browser.newPage({ viewport: { width: 320, height: 640 }, isMobile: true, hasTouch: true });
+  await phone.goto(`http://localhost:${WEB_PORT}/index.html`);
+  await phone.waitForSelector('#sn-rail');
+  for (const sel of ['article p', 'article li']) {
+    await phone.locator(sel).first().click({ clickCount: 3 });
+    await phone.locator('#sn-add').click();
+    const fits = await phone.evaluate(() => {
+      const r = document.querySelector('#sn-pop').getBoundingClientRect();
+      return r.left >= 0 && r.right <= 320 && document.documentElement.scrollWidth <= 320;
+    });
+    check(fits, `comment box fits a 320px phone (${sel})`);
+    await phone.locator('#sn-pop [data-sn-cancel]').click();
+  }
 } finally {
   await browser.close();
   daemon.kill();
