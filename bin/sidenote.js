@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +16,8 @@ const COMMANDS = ['init', 'dev'];
 const AGENTS = ['claude', 'codex'];
 const USAGE =
   'usage: sidenote <init|dev> [--agent claude|codex] [--content content]\n' +
-  '                [--port 4517] [--ask-model haiku] [--resolve-model opus]';
+  '                [--port 4517] [--ask-model haiku] [--resolve-model opus]\n' +
+  '       sidenote --version';
 
 const fail = (message) => {
   console.error(`sidenote: ${message}`);
@@ -77,6 +79,10 @@ Then run:  sidenote dev
     env: { ...process.env, SIDENOTE_PORT: port, SIDENOTE_ROOT: process.cwd() },
     stdio: 'inherit',
   });
+} else if (cmd === '--version' || cmd === '-v') {
+  // Read the package.json next to this script, not the one in the user's cwd.
+  const pkg = JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8'));
+  console.log(pkg.version);
 } else if (cmd === undefined || ['help', '--help', '-h'].includes(cmd)) {
   console.log(USAGE);
 } else {

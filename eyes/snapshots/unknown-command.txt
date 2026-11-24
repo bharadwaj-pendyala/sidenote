@@ -5,4 +5,5 @@ $ deev
 --- stderr
 usage: sidenote <init|dev> [--agent claude|codex] [--content content]
                 [--port 4517] [--ask-model haiku] [--resolve-model opus]
+       sidenote --version
 sidenote: unknown command 'deev'; did you mean 'dev'?
