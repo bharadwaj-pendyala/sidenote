@@ -1,4 +1,6 @@
 import { execFile, spawn } from 'node:child_process';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 import { promisify } from 'node:util';
 
 const run = promisify(execFile);
@@ -35,4 +37,34 @@ export function revertPatch(projectRoot, diff) {
 export async function isClean(projectRoot, file) {
   const { stdout } = await run('git', ['status', '--porcelain', '--', file], { cwd: projectRoot });
   return stdout.trim() === '';
+}
+
+// Exact bytes of each file (null when it does not exist), so work the author
+// had not committed can be put back byte for byte after an agent run.
+export async function snapshotFiles(projectRoot, files) {
+  const snapshot = new Map();
+  for (const file of files) {
+    snapshot.set(file, await readFile(resolve(projectRoot, file)).catch(() => null));
+  }
+  return snapshot;
+}
+
+// Put every snapshotted file back as it was: rewritten if the agent changed,
+// reset or deleted it, removed if it did not exist before. Returns the files
+// it had to restore.
+export async function restoreFiles(projectRoot, snapshot) {
+  const restored = [];
+  for (const [file, bytes] of snapshot) {
+    const abs = resolve(projectRoot, file);
+    const now = await readFile(abs).catch(() => null);
+    if (bytes === null ? now === null : now !== null && bytes.equals(now)) continue;
+    if (bytes === null) {
+      await rm(abs, { force: true });
+    } else {
+      await mkdir(dirname(abs), { recursive: true });
+      await writeFile(abs, bytes);
+    }
+    restored.push(file);
+  }
+  return restored;
 }

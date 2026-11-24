@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { spawn } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -132,6 +132,56 @@ try {
   check(replied.thread.at(-1)?.role === 'agent', 'reply gets a fresh agent answer');
 } finally {
   proc.kill();
+}
+
+// --- cleanup after an agent run puts the author's uncommitted work back exactly
+{
+  const { snapshotFiles, restoreFiles } = await import('./git.js');
+  const dir = await mkdtemp(join(tmpdir(), 'sidenote-snap-'));
+  const binary = Buffer.from([0xff, 0xfe, 0x00, 0x80, 0x41]); // not valid UTF-8
+  await writeFile(join(dir, 'edited.md'), 'mine\n');
+  await writeFile(join(dir, 'reset.md'), 'also mine\n');
+  await writeFile(join(dir, 'deleted.md'), 'keep me\n');
+  await writeFile(join(dir, 'blob.bin'), binary);
+  const snap = await snapshotFiles(dir, ['edited.md', 'reset.md', 'deleted.md', 'blob.bin', 'absent.md']);
+  // What a stray agent might do: edit, reset to the committed text, delete, create.
+  await writeFile(join(dir, 'edited.md'), 'agent\n');
+  await writeFile(join(dir, 'reset.md'), 'committed\n');
+  await rm(join(dir, 'deleted.md'));
+  await writeFile(join(dir, 'blob.bin'), Buffer.from('agent'));
+  await writeFile(join(dir, 'absent.md'), 'new\n');
+  const restored = await restoreFiles(dir, snap);
+  check(restored.length === 5, 'restore reports every file it put back');
+  check((await readFile(join(dir, 'edited.md'), 'utf8')) === 'mine\n', 'an edited dirty file is restored');
+  check((await readFile(join(dir, 'reset.md'), 'utf8')) === 'also mine\n', 'a reset dirty file is restored');
+  check((await readFile(join(dir, 'deleted.md'), 'utf8')) === 'keep me\n', 'a deleted dirty file is restored');
+  check(binary.equals(await readFile(join(dir, 'blob.bin'))), 'a non-UTF-8 file is restored byte for byte');
+  check(!(await readFile(join(dir, 'absent.md')).then(() => true, () => false)), 'a file that did not exist is removed again');
+  check((await restoreFiles(dir, snap)).length === 0, 'restoring an unchanged tree touches nothing');
+}
+
+// --- an explicit empty contentDir allows nothing, not the whole project
+{
+  const dir = await mkdtemp(join(tmpdir(), 'sidenote-empty-'));
+  await mkdir(join(dir, '.sidenote'), { recursive: true });
+  await writeFile(join(dir, '.sidenote', 'config.json'), JSON.stringify({ agent: 'mock', contentDir: [] }));
+  await writeFile(join(dir, 'post.md'), 'Hello.\n');
+  const port = PORT + 1;
+  const p2 = spawn('node', [server], { env: { ...process.env, SIDENOTE_PORT: String(port), SIDENOTE_ROOT: dir }, stdio: 'ignore' });
+  try {
+    let res;
+    for (let i = 0; i < 40 && !res; i++) {
+      res = await fetch(`http://localhost:${port}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file: 'post.md', startOffset: 0, endOffset: 6, body: 'x' }),
+      }).catch(() => null);
+      if (!res) await new Promise((r) => setTimeout(r, 50));
+    }
+    check(res?.status === 400, 'contentDir: [] refuses every file');
+  } finally {
+    p2.kill();
+  }
 }
 
 if (failures > 0) {

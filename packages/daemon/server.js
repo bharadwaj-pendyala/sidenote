@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import { createServer } from 'node:http';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { readFileSync } from 'node:fs';
 import { extname, isAbsolute, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CommentStore } from './store.js';
 import { makeAdapter } from './adapters.js';
-import { changedFiles, diffFile, revertFile, revertPatch } from './git.js';
+import { changedFiles, diffFile, restoreFiles, revertFile, revertPatch, snapshotFiles } from './git.js';
 
 const PORT = Number(process.env.SIDENOTE_PORT) || 4517;
 const HOST = '127.0.0.1';
@@ -18,23 +18,27 @@ function loadConfig() {
     const cfg = JSON.parse(readFileSync(join(projectRoot, '.sidenote', 'config.json'), 'utf8'));
     return {
       agent: process.env.SIDENOTE_AGENT || cfg.agent || 'claude',
-      contentDir: cfg.contentDir || '.',
+      contentDir: cfg.contentDir,
       askModel: cfg.askModel,
       resolveModel: cfg.resolveModel,
     };
   } catch {
-    return { agent: process.env.SIDENOTE_AGENT || 'claude', contentDir: '.' };
+    return { agent: process.env.SIDENOTE_AGENT || 'claude' };
   }
 }
 
 const config = loadConfig();
 // contentDir is one folder or a list of them (a site can keep markdown in
 // several places, e.g. Astro's src/content and src/pages).
-const contentRoots = [config.contentDir]
+// Left out, it is the project root. Given, it is used as given: entries that
+// are not folder names are ignored, so an empty or malformed list allows
+// nothing rather than everything.
+const contentRoots = [config.contentDir ?? '.']
   .flat()
-  .filter((dir) => typeof dir === 'string' && dir)
+  .filter((dir) => typeof dir === 'string' && dir.trim())
   .map((dir) => resolve(projectRoot, dir));
-if (contentRoots.length === 0) contentRoots.push(resolve(projectRoot, '.'));
+if (contentRoots.length === 0)
+  console.warn('sidenote: contentDir lists no folders; every comment will be refused');
 const ALLOWED_EXT = new Set(['.md', '.mdx']);
 
 // A comment's file must resolve to an allowed markdown file inside a content
@@ -71,21 +75,17 @@ async function isStale(comment) {
 // author's own edits) are left alone.
 async function resolveComments(file, comments, onEvent) {
   const target = resolve(projectRoot, file);
-  // Snapshot files that are already dirty, so a stray edit to one of them can
-  // be undone without losing the changes it held before this run.
-  const dirty = new Map();
-  for (const changed of await changedFiles(projectRoot)) {
-    const abs = resolve(projectRoot, changed);
-    if (abs !== target) dirty.set(changed, await readFile(abs, 'utf8').catch(() => null));
-  }
+  // Files that were already changed before this run (earlier resolves awaiting
+  // Accept, the author's own edits) are snapshotted byte for byte and put back
+  // afterwards, whatever the agent did to them: edit, reset or delete.
+  const before = (await changedFiles(projectRoot)).filter((f) => resolve(projectRoot, f) !== target);
+  const snapshot = await snapshotFiles(projectRoot, before);
   await makeAdapter(config.agent, config).resolve(projectRoot, file, comments, onEvent);
   for (const changed of await changedFiles(projectRoot)) {
-    const abs = resolve(projectRoot, changed);
-    if (abs === target) continue;
-    if (!dirty.has(changed)) await revertFile(projectRoot, changed);
-    else if (dirty.get(changed) !== null && (await readFile(abs, 'utf8')) !== dirty.get(changed))
-      await writeFile(abs, dirty.get(changed));
+    if (resolve(projectRoot, changed) === target || snapshot.has(changed)) continue;
+    await revertFile(projectRoot, changed); // a clean file the agent touched
   }
+  await restoreFiles(projectRoot, snapshot);
   return diffFile(projectRoot, file);
 }
 
