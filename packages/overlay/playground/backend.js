@@ -1,7 +1,9 @@
 // In-browser stand-in for the sidenote daemon, used by the hosted playground.
 // It implements the overlay's API (window.SIDENOTE_API) against the post's
 // markdown, kept in this tab, with a scripted agent instead of claude/codex.
-// Nothing leaves the browser. The real daemon lives in packages/daemon.
+// Nothing leaves the browser unless the visitor turns on a real model with
+// their own API key (see "optional real model" below). The real daemon lives
+// in packages/daemon.
 (() => {
   const ORIGINAL = window.SIDENOTE_PLAYGROUND.source;
   const FILE = window.SIDENOTE_PLAYGROUND.file;
@@ -171,7 +173,14 @@
     await sleep(350);
     emit({ kind: 'activity', text: `looking at lines ${lineOf(c.startOffset)}-${lineOf(c.endOffset)}` });
     await sleep(250);
-    const words = answer(c).split(/(\s+)/);
+    let reply;
+    if (real) {
+      emit({ kind: 'activity', text: `asking ${real.model}` });
+      reply = await real.ask({ file: FILE, passage: c.quotedText, comment: c, post: source });
+    } else {
+      reply = answer(c);
+    }
+    const words = reply.split(/(\s+)/);
     for (const w of words) {
       emit({ kind: 'text', text: w });
       if (w.trim()) await sleep(18);
@@ -186,7 +195,9 @@
     emit({ kind: 'activity', text: `reading ${FILE}` });
     await sleep(350);
     const passage = source.slice(c.startOffset, c.endOffset);
-    const next = rewrite(passage);
+    if (real) emit({ kind: 'activity', text: `asking ${real.model} to edit lines ${lineOf(c.startOffset)}-${lineOf(c.endOffset)}` });
+    const next = real ? await real.edit({ file: FILE, passage, comment: c }) : rewrite(passage);
+    if (real && next === passage) throw new Error('the model left the passage unchanged.');
     if (!next)
       throw new Error(
         'the playground agent has no edit for this passage. Try a paragraph, or install sidenote to use claude or codex.'
@@ -289,6 +300,32 @@
       job.subs.add(onEvent);
       return () => job.subs.delete(onEvent);
     },
+  };
+
+  // --- optional real model ("bring your own key") ---------------------------
+  // The key is held only in this closure: never in localStorage, never in the
+  // page URL. For tests, a page served from localhost may name a localhost API
+  // (?anthropic_base_url=http://127.0.0.1:PORT); any other value is ignored,
+  // so a crafted link can never send a visitor's key elsewhere.
+  let real = null;
+  const isLocal = (host) => host === 'localhost' || host === '127.0.0.1';
+  function testBaseURL() {
+    try {
+      const value = new URLSearchParams(location.search).get('anthropic_base_url');
+      if (!value || !isLocal(location.hostname)) return undefined;
+      const url = new URL(value);
+      return url.protocol === 'http:' && isLocal(url.hostname) ? url.origin : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+  window.SIDENOTE_PLAYGROUND.useKey = async (apiKey) => {
+    const { createRealAgent } = await import('./real-agent.js');
+    real = createRealAgent({ apiKey, baseURL: testBaseURL() });
+    return real.model;
+  };
+  window.SIDENOTE_PLAYGROUND.forgetKey = () => {
+    real = null;
   };
 
   window.SIDENOTE_PLAYGROUND.reset = () => {

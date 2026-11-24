@@ -1,0 +1,81 @@
+page http://127.0.0.1:4613/index.html?anthropic_base_url=http://127.0.0.1:4616
+   1. goto http://127.0.0.1:4613/index.html?anthropic_base_url=http://127.0.0.1:4616  [pass]
+   2. wait_for #sn-rail  [pass]
+   3. click #pg-real-toggle  [pass]
+   4. fill #pg-key  [pass]
+   5. click #pg-use  [pass]
+   6. expect_text Real model on  [pass]
+   7. select_text article p  [pass]
+   8. click #sn-add  [pass]
+   9. fill #sn-pop textarea  [pass]
+  10. click #sn-pop [data-sn-save]  [pass]
+  11. click .sn-card [data-resolve]  [pass]
+  12. wait_for .sn-card .sn-diff  [pass]
+  13. expect_text +EDITED BY FAKE CLAUDE.  [pass]
+  14. click .sn-card [data-accept]  [pass]
+  15. wait_for .sn-card .sn-done  [pass]
+  16. expect_text EDITED BY FAKE CLAUDE.  [pass]
+  17. select_text article li  [pass]
+  18. click #sn-add  [pass]
+  19. fill #sn-pop textarea  [pass]
+  20. click #sn-pop [data-sn-save]  [pass]
+  21. click .sn-card:nth-child(2) [data-ask]  [pass]
+  22. wait_for .sn-card:nth-child(2) .sn-turn.agent  [pass]
+  23. expect_text FAKE CLAUDE ANSWER  [pass]
+--- visible text
+This is the sidenote live playground. It is a rendered blog post, like yours.
+Select a sentence in the post and press + Comment.
+Press Ask to discuss it, or Resolve to get the edit as a diff.
+Accept it and the page updates.
+The agent here is a scripted stand-in that runs in your browser. On your own site, sidenote uses claude or codex and edits the real markdown file.
+GitHub
+Install
+npm
+Reset playground
+Try it with a real model, using your own Anthropic API key
+
+Ask and Resolve then call Claude from your browser with your key. The key stays in this tab's memory only: it is not saved, and it is sent only to the Anthropic API. Reloading the page forgets it. Requests are billed to your key.
+
+Real model on: Ask and Resolve now use claude-opus-5-5 with your key.
+
+Forget the key
+Notes on editing your own writing
+
+EDITED BY FAKE CLAUDE.
+
+Read it where readers will
+
+Reading your markdown in an editor is not the same as reading the rendered page. Line breaks, headings and code blocks all look really different once they are styled, and problems you never noticed in the source jump out at you on the page.
+
+Comment first, fix later
+
+When you spot something, resist the urge to fix it right away. Leave a note that says what is wrong and keep reading, because fixing as you go breaks your flow and you end up polishing a paragraph that you were actually going to cut anyway.
+
+A short checklist for the second pass:
+
+Cut the throat-clearing at the very start.
+Name the thing instead of describing it.
+Read it once on your phone.
+
+That is the whole loop: read the page, leave comments, and let the edits come back as a diff you can accept or reject.
+
+Use it on your own Astro, Docusaurus, Next.js or remark site:
+
+npm install --save-dev remark-sidenote
+npx sidenote-cli init
+npx sidenote-cli dev
+
+sidenote on GitHub. MIT licensed. Local-first: your files never leave your machine.
+
+SIDENOTE
+Clear resolved
+So basically, every draft you write is kind of hiding a better post inside of it, and the
+tighten this
+resolved
+Delete
+- Cut the throat-clearing at the very start.
+is this needed?
+FAKE CLAUDE ANSWER: yes, trim the intro.
+Reply
+Resolve
+Delete

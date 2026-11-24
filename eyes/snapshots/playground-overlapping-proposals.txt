@@ -30,6 +30,7 @@ GitHub
 Install
 npm
 Reset playground
+Try it with a real model, using your own Anthropic API key
 Notes on editing your own writing
 
 Every draft hides a better post. Editing is finding it and cutting everything around it.

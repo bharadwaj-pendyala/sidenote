@@ -5,6 +5,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { build } from 'esbuild';
 import { remark } from 'remark';
 import remarkHtml from 'remark-html';
 import sidenoteOffsets from '../remark-plugin/index.js';
@@ -51,8 +52,21 @@ const html = `<!doctype html>
   #pg-banner ol { margin: 8px 0 10px; padding-left: 20px; }
   #pg-banner .pg-links { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
   #pg-banner a { color: #0b57d0; }
-  #pg-banner button { font: inherit; background: none; border: 0; padding: 0; color: #0b57d0;
+  #pg-banner .pg-links button, #pg-forget { font: inherit; background: none; border: 0; padding: 0; color: #0b57d0;
     text-decoration: underline; cursor: pointer; }
+  #pg-real { margin-top: 12px; border-top: 1px solid #f0e2a0; padding-top: 10px; }
+  #pg-real-toggle { font: inherit; background: none; border: 0; padding: 0; color: #0b57d0;
+    cursor: pointer; text-align: left; }
+  #pg-real-toggle::before { content: '\\25B8  '; }
+  #pg-real-toggle[aria-expanded="true"]::before { content: '\\25BE  '; }
+  #pg-real p { margin: 8px 0; }
+  #pg-real label { display: block; font-weight: 600; margin-bottom: 4px; }
+  #pg-real .pg-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  #pg-key { flex: 1 1 200px; min-width: 0; font: 14px ui-monospace, monospace; padding: 6px 8px;
+    border: 1px solid #c9bd86; border-radius: 6px; background: #fff; }
+  #pg-use { font: inherit; padding: 6px 12px; border: 0; border-radius: 6px; background: #1a1a1a;
+    color: #fff; cursor: pointer; }
+  #pg-real-status:empty { display: none; }
   article h1 { font-size: 34px; line-height: 1.2; margin: 0 0 20px; }
   article h2 { font-size: 23px; margin: 36px 0 8px; }
   footer { font: 14px/1.6 -apple-system, system-ui, sans-serif; color: #555; border-top: 1px solid #eee;
@@ -79,6 +93,23 @@ const html = `<!doctype html>
       <a href="https://www.npmjs.com/package/sidenote-cli">npm</a>
       <button type="button" id="pg-reset">Reset playground</button>
     </div>
+    <div id="pg-real">
+      <button type="button" id="pg-real-toggle" aria-expanded="false" aria-controls="pg-real-panel">Try it with a real model, using your own Anthropic API key</button>
+      <div id="pg-real-panel" hidden>
+      <p>Ask and Resolve then call Claude from your browser with your key. The key stays in this
+      tab's memory only: it is not saved, and it is sent only to the Anthropic API. Reloading the
+      page forgets it. Requests are billed to your key.</p>
+      <form id="pg-key-form" autocomplete="off">
+        <label for="pg-key">Anthropic API key</label>
+        <div class="pg-row">
+          <input id="pg-key" type="password" placeholder="sk-ant-..." spellcheck="false" required>
+          <button type="submit" id="pg-use">Use this key</button>
+        </div>
+      </form>
+      <p id="pg-real-status" role="status"></p>
+      <button type="button" id="pg-forget" hidden>Forget the key</button>
+      </div>
+    </div>
   </div>
   <article>${article}</article>
   <footer>
@@ -92,11 +123,60 @@ npx sidenote-cli dev</pre>
 <script>window.SIDENOTE_PLAYGROUND = ${safe(JSON.stringify({ source, file: FILE }))};</script>
 <script>${safe(backend)}</script>
 <script>${safe(overlay)}</script>
-<script>document.getElementById('pg-reset').addEventListener('click', () => window.SIDENOTE_PLAYGROUND.reset());</script>
+<script>
+  document.getElementById('pg-reset').addEventListener('click', () => window.SIDENOTE_PLAYGROUND.reset());
+  (() => {
+    const toggle = document.getElementById('pg-real-toggle');
+    const panel = document.getElementById('pg-real-panel');
+    toggle.addEventListener('click', () => {
+      const open = toggle.getAttribute('aria-expanded') !== 'true';
+      toggle.setAttribute('aria-expanded', String(open));
+      panel.hidden = !open;
+      if (open) document.getElementById('pg-key').focus();
+    });
+    const form = document.getElementById('pg-key-form');
+    const input = document.getElementById('pg-key');
+    const status = document.getElementById('pg-real-status');
+    const forget = document.getElementById('pg-forget');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const key = input.value.trim();
+      if (!key) return;
+      status.textContent = 'Loading...';
+      try {
+        const model = await window.SIDENOTE_PLAYGROUND.useKey(key);
+        input.value = '';
+        form.hidden = true;
+        forget.hidden = false;
+        status.textContent = 'Real model on: Ask and Resolve now use ' + model + ' with your key.';
+      } catch (err) {
+        status.textContent = 'Could not load the real model: ' + err.message;
+      }
+    });
+    forget.addEventListener('click', () => {
+      window.SIDENOTE_PLAYGROUND.forgetKey();
+      form.hidden = false;
+      forget.hidden = true;
+      status.textContent = 'Key forgotten. Ask and Resolve use the scripted agent again.';
+    });
+  })();
+</script>
 </body>
 </html>
 `;
 
 await mkdir(join(here, 'playground', 'dist'), { recursive: true });
 await writeFile(join(here, 'playground', 'dist', 'index.html'), html);
+// The real-model agent is its own file, fetched only when a visitor opts in.
+await build({
+  entryPoints: [join(here, 'playground', 'real-agent.js')],
+  outfile: join(here, 'playground', 'dist', 'real-agent.js'),
+  bundle: true,
+  format: 'esm',
+  platform: 'browser',
+  target: 'es2020',
+  minify: true,
+  legalComments: 'none',
+  logLevel: 'warning',
+});
 console.log('wrote playground/dist/index.html');
