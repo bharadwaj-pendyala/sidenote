@@ -53,3 +53,48 @@ if (failures > 0) {
   process.exit(1);
 }
 console.log(`\nPASS: ${stamped.length} blocks stamped, offsets round-trip to source`);
+
+// --- file path from the vfile (Astro / Docusaurus / Next MDX configure remark once)
+import { VFile } from 'vfile';
+import { join } from 'node:path';
+
+const fromVfile = String(
+  await remark()
+    .use(sidenoteOffsets, { root: '/site' })
+    .use(remarkHtml, { sanitize: false })
+    .process(new VFile({ path: join('/site', 'src', 'content', 'blog', 'rag.md'), value: source }))
+);
+if (!fromVfile.includes('data-sn-file="src/content/blog/rag.md"')) {
+  console.error('FAIL: vfile path was not used (or not made relative to root)');
+  console.error(fromVfile);
+  process.exit(1);
+}
+console.log('PASS: file comes from the vfile path, relative to root');
+
+const noPath = String(await remark().use(sidenoteOffsets).use(remarkHtml).process(source));
+if (noPath.includes('data-sn-')) {
+  console.error('FAIL: stamped blocks with no file to point at');
+  process.exit(1);
+}
+console.log('PASS: no file and no vfile path leaves the HTML unchanged');
+
+// --- frontmatter stripped before parsing (Astro content collections, Docusaurus)
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+
+const dir = mkdtempSync(join(tmpdir(), 'sn-'));
+const body = 'A paragraph after frontmatter.\n';
+const onDisk = `---\ntitle: Hi\n---\n\n${body}`;
+writeFileSync(join(dir, 'post.md'), onDisk);
+const stripped = String(
+  await remark()
+    .use(sidenoteOffsets, { root: dir })
+    .use(remarkHtml, { sanitize: false })
+    .process(new VFile({ path: join(dir, 'post.md'), value: body }))
+);
+const [, s0, e0] = stripped.match(/data-sn-start="(\d+)" data-sn-end="(\d+)"/) || [];
+if (onDisk.slice(Number(s0), Number(e0)) !== 'A paragraph after frontmatter.') {
+  console.error(`FAIL: offsets ignore stripped frontmatter: ${s0}-${e0}`);
+  process.exit(1);
+}
+console.log('PASS: offsets point into the file on disk when frontmatter was stripped');

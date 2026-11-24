@@ -1,0 +1,50 @@
+name: Release
+
+# Pushing a version tag (v0.1.0, v0.2.0, ...) publishes both npm packages at
+# the version in their package.json. Needs an NPM_TOKEN secret (an npm
+# automation token) in the repository settings. Re-run it from the Actions tab
+# (Run workflow, on the tag) if the secret was added after the tag was pushed.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+      - name: Check the tag matches the package versions
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          for pkg in package.json packages/remark-plugin/package.json; do
+            v=$(node -p "require('./$pkg').version")
+            if [ "$v" != "$tag" ]; then echo "$pkg is $v, tag is $tag"; exit 1; fi
+          done
+      - run: npm ci --prefix packages/remark-plugin
+      - run: npm test
+      # Each package is skipped when its version is already on npm, so a re-run
+      # after a partial release finishes the other one instead of failing.
+      - name: Publish remark-sidenote
+        run: |
+          v=$(node -p "require('./package.json').version")
+          if npm view "remark-sidenote@$v" version >/dev/null 2>&1; then echo "remark-sidenote@$v is already published"; exit 0; fi
+          npm publish --provenance --access public
+        working-directory: packages/remark-plugin
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish sidenote-cli
+        run: |
+          v=$(node -p "require('./package.json').version")
+          if npm view "sidenote-cli@$v" version >/dev/null 2>&1; then echo "sidenote-cli@$v is already published"; exit 0; fi
+          npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

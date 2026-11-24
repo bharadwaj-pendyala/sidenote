@@ -13,7 +13,10 @@
       "command": ["python3", "-m", "http.server", "4612", "--bind", "127.0.0.1"],
       "cwd": "{workspace}/packages/overlay/demo",
       "ready": {"url": "http://127.0.0.1:4612/"}
-    }
+    },
+    "playground": {"command": ["python3", "-m", "http.server", "4613", "--bind", "127.0.0.1"], "cwd": "{workspace}/packages/overlay/playground/dist", "ready": {"url": "http://127.0.0.1:4613/"}},
+    "daemon-astro": {"command": ["node", "{workspace}/packages/daemon/server.js"], "env": {"SIDENOTE_PORT": "4614", "SIDENOTE_ROOT": "{workspace}/eyes/fixtures/astro-site"}, "ready": {"url": "http://localhost:4614/health"}},
+    "daemon-empty-scope": {"command": ["node", "{workspace}/packages/daemon/server.js"], "env": {"SIDENOTE_PORT": "4615", "SIDENOTE_ROOT": "{workspace}/eyes/fixtures/blog"}, "ready": {"url": "http://localhost:4615/health"}}
   },
   "cases": [
     {"id": "help", "argv": ["--help"], "exit": 0, "stdout_contains": ["usage: sidenote", "init", "dev"]},
@@ -70,6 +73,93 @@
        {"fill": "#sn-pop textarea", "text": "shorter please"},
        {"click": "#sn-pop [data-sn-save]"},
        {"expect_count": ".sn-card", "count": 1}
-     ]}}
+     ]}},
+    {"id": "init-detects-astro", "note": "Astro configures remark once, so the steps must not ask for a per-file path", "workspace": "temp", "cwd": "eyes/fixtures/astro-site", "argv": ["init"], "exit": 0, "stdout_contains": ["Astro detected", "astro.config.mjs", "remarkPlugins: [sidenote]", "import.meta.env.DEV", "sidenote dev"], "stdout_absent": ["relativePathToThisMarkdownFile"], "files": {".sidenote/config.json": {"json": {"agent": "claude", "contentDir": "src/content"}}}},
+    {"id": "init-detects-docusaurus", "workspace": "temp", "cwd": "eyes/fixtures/docusaurus-site", "argv": ["init", "--agent", "codex"], "exit": 0, "stdout_contains": ["Docusaurus detected", "docusaurus.config.js", "remarkPlugins: [sidenote]", "headTags", "sidenote dev"], "stdout_absent": ["relativePathToThisMarkdownFile"], "files": {".sidenote/config.json": {"json": {"agent": "codex", "contentDir": "blog"}}}},
+    {"id": "init-detects-next", "workspace": "temp", "cwd": "eyes/fixtures/next-site", "argv": ["init"], "exit": 0, "stdout_contains": ["Next.js detected", "remark-sidenote", "process.env.NODE_ENV === 'development'", "sidenote dev"], "files": {".sidenote/config.json": {"json": {"contentDir": "content"}}}},
+    {"id": "init-content-flag-wins", "note": "an explicit --content beats the detected folder", "workspace": "temp", "cwd": "eyes/fixtures/astro-site", "argv": ["init", "--content", "src/pages"], "exit": 0, "files": {".sidenote/config.json": {"json": {"contentDir": "src/pages"}}}},
+    {"id": "playground-resolve-accept", "note": "a visitor tries the whole loop in the hosted demo, with no install", "workspace": "temp", "services": ["playground"], "setup": ["node packages/overlay/build-playground.js"],
+     "page": {"viewport": "desktop", "steps": [
+       {"goto": "http://127.0.0.1:4613/index.html"},
+       {"wait_for": "#sn-rail"},
+       {"expect_text": "live playground", "in": "#pg-banner"},
+       {"select_text": "article p"},
+       {"click": "#sn-add"},
+       {"fill": "#sn-pop textarea", "text": "tighten this, cut the filler"},
+       {"click": "#sn-pop [data-sn-save]"},
+       {"expect_count": ".sn-card", "count": 1},
+       {"reload": true},
+       {"expect_text": "tighten this, cut the filler", "in": "#sn-rail"},
+       {"click": ".sn-card [data-resolve]"},
+       {"wait_for": ".sn-card .sn-diff"},
+       {"expect_text": "@@", "in": ".sn-card .sn-diff"},
+       {"click": ".sn-card [data-accept]"},
+       {"wait_for": ".sn-card .sn-done"},
+       {"expect_text": "Every draft hides a better post.", "in": "article"}
+     ]}},
+    {"id": "playground-reject", "workspace": "temp", "services": ["playground"], "setup": ["node packages/overlay/build-playground.js"],
+     "page": {"viewport": "desktop", "steps": [
+       {"goto": "http://127.0.0.1:4613/index.html"},
+       {"wait_for": "#sn-rail"},
+       {"select_text": "article p"},
+       {"click": "#sn-add"},
+       {"fill": "#sn-pop textarea", "text": "shorter"},
+       {"click": "#sn-pop [data-sn-save]"},
+       {"click": ".sn-card [data-resolve]"},
+       {"wait_for": ".sn-card .sn-diff"},
+       {"click": ".sn-card [data-reject]"},
+       {"wait_for": ".sn-card [data-resolve]"},
+       {"expect_count": ".sn-card .sn-diff", "count": 0},
+       {"expect_text": "basically", "in": "article p"}
+     ]}},
+    {"id": "playground-ask", "workspace": "temp", "services": ["playground"], "setup": ["node packages/overlay/build-playground.js"],
+     "page": {"viewport": "desktop", "steps": [
+       {"goto": "http://127.0.0.1:4613/index.html"},
+       {"wait_for": "#sn-rail"},
+       {"select_text": "article p"},
+       {"click": "#sn-add"},
+       {"fill": "#sn-pop textarea", "text": "is this intro too long?"},
+       {"click": "#sn-pop [data-sn-save]"},
+       {"click": ".sn-card [data-ask]"},
+       {"wait_for": ".sn-card .sn-turn.agent"},
+       {"expect_text": "intro", "in": ".sn-card .sn-turn.agent"},
+       {"expect_count": ".sn-card [data-reply-open]", "count": 1}
+     ]}},
+    {"id": "playground-phone", "note": "most launch traffic arrives on a phone", "workspace": "temp", "services": ["playground"], "setup": ["node packages/overlay/build-playground.js"],
+     "page": {"viewport": "mobile", "steps": [
+       {"goto": "http://127.0.0.1:4613/index.html"},
+       {"wait_for": "#sn-rail"},
+       {"select_text": "article p"},
+       {"click": "#sn-add"},
+       {"fill": "#sn-pop textarea", "text": "cut this"},
+       {"click": "#sn-pop [data-sn-save]"},
+       {"expect_count": ".sn-card", "count": 1}
+     ]}},
+    {"id": "init-config-resolves-astro-pages", "note": "the config init writes must let the daemon resolve every page the printed steps instrument", "workspace": "temp", "setup": ["mkdir -p eyes/fixtures/astro-site/src/pages && printf -- '---\\nlayout: ../layouts/L.astro\\n---\\n\\nA page to comment on.\\n' > eyes/fixtures/astro-site/src/pages/post.md", "cd eyes/fixtures/astro-site && node ../../../bin/sidenote.js init --agent mock > /dev/null", "cd eyes/fixtures/astro-site && git init -q && git add -A && git -c user.email=eyes@local -c user.name=eyes commit -qm init"], "services": ["daemon-astro"], "command": ["bash", "-c", "set -e; A=http://localhost:4614; for f in src/pages/post.md src/content/blog/hello.md; do t=$(node -e \"const s=require('fs').readFileSync('eyes/fixtures/astro-site/'+process.argv[1],'utf8');const p=s.indexOf('Hello from Astro.')>=0?'Hello from Astro.':'A page to comment on.';const i=s.indexOf(p);console.log(JSON.stringify({file:process.argv[1],startOffset:i,endOffset:i+p.length,body:'louder'}))\" $f); curl -s -o /dev/null -w \"create $f %{http_code}\\n\" -H 'Content-Type: application/json' -d \"$t\" $A/comments; done; curl -s -X POST $A/resolve-all | node -e \"let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{for(const r of JSON.parse(d))console.log('resolved',r.file)})\""], "argv": [], "exit": 0, "check_width": false, "stdout_contains": ["create src/pages/post.md 201", "create src/content/blog/hello.md 201", "resolved src/pages/post.md", "resolved src/content/blog/hello.md"], "files": {"eyes/fixtures/astro-site/src/pages/post.md": {"contains": ["A PAGE TO COMMENT ON."]}, "eyes/fixtures/astro-site/src/content/blog/hello.md": {"contains": ["HELLO FROM ASTRO.", "title: Hello"]}}},
+    {"id": "playground-overlapping-proposals", "note": "two proposals for one paragraph: accepting the second after the first must not splice into the changed text", "workspace": "temp", "services": ["playground"], "setup": ["node packages/overlay/build-playground.js"],
+     "page": {"viewport": "desktop", "steps": [
+       {"goto": "http://127.0.0.1:4613/index.html"},
+       {"wait_for": "#sn-rail"},
+       {"select_text": "article p"},
+       {"click": "#sn-add"},
+       {"fill": "#sn-pop textarea", "text": "tighten"},
+       {"click": "#sn-pop [data-sn-save]"},
+       {"select_text": "article p"},
+       {"click": "#sn-add"},
+       {"fill": "#sn-pop textarea", "text": "also shorter"},
+       {"click": "#sn-pop [data-sn-save]"},
+       {"expect_count": ".sn-card", "count": 2},
+       {"click": ".sn-card [data-resolve]"},
+       {"wait_for": ".sn-card .sn-diff"},
+       {"click": ".sn-card:nth-child(2) [data-resolve]"},
+       {"expect_count": ".sn-card .sn-diff", "count": 2},
+       {"click": ".sn-card [data-accept]"},
+       {"wait_for": ".sn-card .sn-done"},
+       {"click": ".sn-card:nth-child(2) [data-accept]"},
+       {"wait_for": ".sn-card .sn-stale"},
+       {"expect_text": "Every draft hides a better post.", "in": "article p"},
+       {"expect_text": "Read it where readers will", "in": "article"}
+     ]}},
+    {"id": "empty-content-scope-refuses", "note": "an explicit empty contentDir must allow no file, never the whole project", "workspace": "temp", "setup": ["mkdir -p eyes/fixtures/blog/.sidenote && echo '{\"agent\": \"mock\", \"contentDir\": []}' > eyes/fixtures/blog/.sidenote/config.json"], "services": ["daemon-empty-scope"], "command": ["bash", "-c", "curl -s -w ' %{http_code}\\n' -H 'Content-Type: application/json' -d '{\"file\":\"content/posts/hello.md\",\"startOffset\":0,\"endOffset\":5,\"body\":\"x\"}' http://localhost:4615/comments"], "argv": [], "exit": 0, "check_width": false, "stdout_contains": ["inside the content dir", " 400"], "files": {"eyes/fixtures/blog/.sidenote/comments.json": {"exists": false}}}
   ]
 }

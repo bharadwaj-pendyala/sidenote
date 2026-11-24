@@ -1,0 +1,35 @@
+$ init --agent codex
+[exit 0]
+--- stdout
+
+sidenote configured (agent: codex). Docusaurus detected (docusaurus.config.js).
+
+Install the plugin:  npm install --save-dev remark-sidenote
+
+Two one-time wiring steps:
+
+1) Stamp source offsets in docusaurus.config.js, for docs and blog:
+
+     import sidenote from 'remark-sidenote';
+
+     presets: [['classic', {
+       docs: { remarkPlugins: [sidenote] },
+       blog: { remarkPlugins: [sidenote] },
+     }]],
+
+2) Load the overlay in dev only, also in docusaurus.config.js:
+
+     headTags: process.env.NODE_ENV === 'development'
+       ? [{
+           tagName: 'script',
+           attributes: {
+             src: 'http://localhost:4517/overlay.js',
+             defer: 'true',
+           },
+         }]
+       : [],
+
+Then run:  sidenote dev
+Guide:     docs/guides/docusaurus.md in github.com/bharadwaj-pendyala/sidenote
+--- stderr
+

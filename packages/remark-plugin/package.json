@@ -1,6 +1,6 @@
 {
   "name": "remark-sidenote",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "remark plugin that stamps source offsets onto rendered HTML blocks so sidenote can map a selection back to the source markdown.",
   "type": "module",
   "main": "index.js",

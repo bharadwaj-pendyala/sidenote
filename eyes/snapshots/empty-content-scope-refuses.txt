@@ -1,0 +1,6 @@
+$ bash -c 'curl -s -w '\'' %{http_code}\n'\'' -H '\''Content-Type: application/json'\'' -d '\''{"file":"content/posts/hello.md","startOffset":0,"endOffset":5,"body":"x"}'\'' http://localhost:4615/comments'
+[exit 0]
+--- stdout
+{"error":"file must be a markdown file inside the content dir"} 400
+--- stderr
+

@@ -1,0 +1,28 @@
+$ init --content src/pages
+[exit 0]
+--- stdout
+
+sidenote configured (agent: claude). Astro detected (astro.config.mjs).
+
+Install the plugin:  npm install --save-dev remark-sidenote
+
+Two one-time wiring steps:
+
+1) Stamp source offsets in astro.config.mjs:
+
+     import sidenote from 'remark-sidenote';
+
+     export default defineConfig({
+       markdown: { remarkPlugins: [sidenote] },
+     });
+
+2) Load the overlay in dev only, in your layout's <head>:
+
+     {import.meta.env.DEV && (
+       <script is:inline src="http://localhost:4517/overlay.js" defer></script>
+     )}
+
+Then run:  sidenote dev
+Guide:     docs/guides/astro.md in github.com/bharadwaj-pendyala/sidenote
+--- stderr
+

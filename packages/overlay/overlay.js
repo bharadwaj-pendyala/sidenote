@@ -2,7 +2,10 @@
   const PORT = window.SIDENOTE_PORT || 4517;
   const API = `http://localhost:${PORT}`;
 
-  const api = {
+  // A page can supply its own backend as window.SIDENOTE_API (same methods,
+  // plus stream(id, onEvent) returning an unsubscribe). The hosted playground
+  // uses this to run the whole loop in the browser with no daemon.
+  const api = window.SIDENOTE_API || {
     list: () => fetch(`${API}/comments`).then((r) => r.json()),
     create: (c) =>
       fetch(`${API}/comments`, {
@@ -21,6 +24,12 @@
       }).then((r) => r.json()),
     accept: (id) => fetch(`${API}/comments/${id}/accept`, { method: 'POST' }).then((r) => r.json()),
     reject: (id) => fetch(`${API}/comments/${id}/reject`, { method: 'POST' }).then((r) => r.json()),
+    stream: (id, onEvent) => {
+      const es = new EventSource(`${API}/comments/${id}/stream`);
+      es.onmessage = (e) => onEvent(JSON.parse(e.data));
+      es.onerror = () => onEvent({ kind: 'done', lost: true });
+      return () => es.close();
+    },
   };
 
   const blockOf = (node) => {
@@ -35,6 +44,7 @@
   // --- styles -------------------------------------------------------------
   const style = document.createElement('style');
   style.textContent = `
+    body.sn-on { margin-right: 300px !important; }
     #sn-rail { position: fixed; top: 0; right: 0; width: 300px; height: 100vh;
       overflow-y: auto; background: #fafafa; border-left: 1px solid #e2e2e2;
       font: 13px/1.5 -apple-system, system-ui, sans-serif; padding: 16px 14px;
@@ -57,7 +67,7 @@
       padding: 8px; border-radius: 6px; margin: 8px 0 0; overflow-y: auto; white-space: pre-wrap;
       overflow-wrap: anywhere; max-height: 220px; }
     .sn-card .sn-done { color: #2e7d32; font-size: 12px; align-self: center; }
-    .sn-card .sn-stale { color: #b26a00; font-size: 12px; align-self: center; }
+    .sn-card .sn-stale { color: #8a5200; font-size: 12px; align-self: center; }
     .sn-card .sn-thread { margin: 8px 0 0; display: flex; flex-direction: column; gap: 6px; }
     .sn-turn { font-size: 12px; padding: 6px 8px; border-radius: 6px; white-space: pre-wrap;
       overflow-wrap: anywhere; }
@@ -78,12 +88,21 @@
     #sn-add { position: absolute; z-index: 2147483001; transform: translate(-50%, -100%);
       background: #111; color: #fff; border: 0; border-radius: 6px; padding: 5px 10px;
       font: 12px system-ui; cursor: pointer; display: none; }
-    #sn-pop { position: absolute; z-index: 2147483002; width: 240px; background: #fff;
+    #sn-pop { position: absolute; z-index: 2147483002; width: 262px; box-sizing: border-box; background: #fff;
       border: 1px solid #ccc; border-radius: 8px; padding: 10px; display: none;
       box-shadow: 0 6px 24px rgba(0,0,0,.15); }
     #sn-pop textarea { width: 100%; box-sizing: border-box; height: 60px; resize: vertical;
       font: 13px system-ui; border: 1px solid #ddd; border-radius: 6px; padding: 6px; }
     #sn-pop .sn-actions { margin-top: 8px; display: flex; justify-content: flex-end; gap: 6px; }
+    /* Phones: no room beside the text and a fixed sheet would hide it, so the
+       rail joins the page flow under the content. */
+    @media (max-width: 720px) {
+      body.sn-on { margin-right: 0 !important; }
+      #sn-rail { position: static; width: auto; height: auto; overflow: visible;
+        border-left: 0; border-top: 1px solid #e2e2e2; margin-top: 24px; }
+      #sn-pop { width: min(280px, calc(100vw - 24px)); }
+      .sn-card button { padding: 6px 10px; }
+    }
   `;
   document.head.appendChild(style);
 
@@ -93,7 +112,7 @@
     '<div id="sn-head"><h2>sidenote</h2><button id="sn-clear">Clear resolved</button></div>' +
     '<div id="sn-list"></div>';
   document.body.appendChild(rail);
-  document.body.style.marginRight = '300px';
+  document.body.classList.add('sn-on');
   const list = rail.querySelector('#sn-list');
   const clearBtn = rail.querySelector('#sn-clear');
   clearBtn.addEventListener('click', async () => {
@@ -119,7 +138,9 @@
   let pending = null; // { block, quotedText }
 
   // --- selection → floating add button ------------------------------------
-  document.addEventListener('selectionchange', () => {
+  // selectionchange alone can miss the end of a fast multi-click on a busy
+  // page, so the button is also re-checked when the pointer or key is released.
+  const updateAdd = () => {
     if (pop.style.display === 'block') return;
     const sel = document.getSelection();
     if (!sel || sel.isCollapsed || !sel.toString().trim()) {
@@ -132,19 +153,38 @@
       return;
     }
     const rect = sel.getRangeAt(0).getBoundingClientRect();
-    addBtn.style.left = `${rect.left + rect.width / 2 + scrollX}px`;
-    addBtn.style.top = `${rect.top + scrollY - 6}px`;
+    // On touch screens the OS selection menu sits above the text, so go below it.
+    const touch = matchMedia('(pointer: coarse)').matches;
+    const x = Math.min(Math.max(rect.left + rect.width / 2, 60), document.documentElement.clientWidth - 60);
+    addBtn.style.left = `${x + scrollX}px`;
+    addBtn.style.top = touch ? `${rect.bottom + scrollY + 40}px` : `${rect.top + scrollY - 6}px`;
     addBtn.style.display = 'block';
     pending = { block, quotedText: sel.toString().trim() };
-  });
+  };
+  document.addEventListener('selectionchange', updateAdd);
+  // The position is measured against the layout at that moment; a resize
+  // (window drag, phone rotation) would leave the button where the text was.
+  window.addEventListener('resize', updateAdd);
+  for (const type of ['mouseup', 'keyup', 'touchend'])
+    document.addEventListener(type, (e) => {
+      if (e.target instanceof Node && (addBtn.contains(e.target) || pop.contains(e.target))) return;
+      setTimeout(updateAdd, 0);
+    });
 
   addBtn.addEventListener('mousedown', (e) => {
     e.preventDefault();
     if (!pending) return;
     addBtn.style.display = 'none';
-    pop.style.left = addBtn.style.left;
+    // Show it first so the clamp uses the width it actually renders at,
+    // padding and border included, and it never runs off a narrow screen.
+    pop.style.left = '0px';
     pop.style.top = `${parseFloat(addBtn.style.top) + 8}px`;
     pop.style.display = 'block';
+    const viewport = document.documentElement.clientWidth;
+    const popWidth = pop.offsetWidth;
+    const left = Math.min(Math.max(parseFloat(addBtn.style.left) - scrollX - popWidth / 2, 12),
+      viewport - popWidth - 12);
+    pop.style.left = `${Math.max(left, 0) + scrollX}px`;
     textarea.value = '';
     textarea.focus();
   });
@@ -162,7 +202,10 @@
       body,
     });
     closePop();
-    render();
+    await render();
+    // On phones the rail sits under the post; bring the new card into view.
+    if (matchMedia('(max-width: 720px)').matches)
+      list.lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   });
 
   function closePop() {
@@ -180,9 +223,10 @@
     acts.innerHTML = '';
     ans.textContent = '';
     let answer = '';
-    const es = new EventSource(`${API}/comments/${id}/stream`);
-    es.onmessage = (e) => {
-      const evt = JSON.parse(e.data);
+    let ended = false;
+    let stop;
+    stop = api.stream(id, (evt) => {
+      if (ended) return;
       if (evt.kind === 'activity') {
         const line = document.createElement('div');
         line.className = 'sn-act';
@@ -192,7 +236,8 @@
         answer += evt.text;
         ans.textContent = answer;
       } else if (evt.kind === 'done') {
-        es.close();
+        ended = true;
+        stop?.(); // undefined while a backend replays synchronously; closed below
         if (evt.error) {
           ans.textContent = `error: ${evt.error}`;
           setTimeout(render, 2000);
@@ -200,11 +245,8 @@
           render();
         }
       }
-    };
-    es.onerror = () => {
-      es.close();
-      render();
-    };
+    });
+    if (ended) stop?.();
   }
 
   // --- render rail + anchors ----------------------------------------------

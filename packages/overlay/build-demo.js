@@ -19,6 +19,7 @@ const content = String(
 
 const html = `<!doctype html>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>sidenote demo</title>
 <style> body { max-width: 640px; margin: 40px; font: 16px/1.6 Georgia, serif; } </style>
 <article>${content}</article>

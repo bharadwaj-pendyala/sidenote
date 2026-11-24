@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { access, mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -34,24 +34,138 @@ const closeTo = (word, options) =>
     return d[a.length][b.length] <= 1;
   });
 
+// Each framework wires remark and the overlay script in its own place. Frameworks
+// that configure remark once pass the file on the vfile, so no per-file path.
+const FRAMEWORKS = [
+  {
+    name: 'Astro',
+    configs: ['astro.config.mjs', 'astro.config.ts', 'astro.config.js'],
+    contentDirs: ['src/content', 'src/pages'],
+    guide: 'astro',
+    steps: (config, overlay) => `1) Stamp source offsets in ${config}:
+
+     import sidenote from 'remark-sidenote';
+
+     export default defineConfig({
+       markdown: { remarkPlugins: [sidenote] },
+     });
+
+2) Load the overlay in dev only, in your layout's <head>:
+
+     {import.meta.env.DEV && (
+       <script is:inline src="${overlay}" defer></script>
+     )}`,
+  },
+  {
+    name: 'Docusaurus',
+    configs: ['docusaurus.config.js', 'docusaurus.config.mjs', 'docusaurus.config.ts'],
+    contentDirs: ['docs', 'blog', 'src/pages'],
+    guide: 'docusaurus',
+    steps: (config, overlay) => `1) Stamp source offsets in ${config}, for docs and blog:
+
+     import sidenote from 'remark-sidenote';
+
+     presets: [['classic', {
+       docs: { remarkPlugins: [sidenote] },
+       blog: { remarkPlugins: [sidenote] },
+     }]],
+
+2) Load the overlay in dev only, also in ${config}:
+
+     headTags: process.env.NODE_ENV === 'development'
+       ? [{
+           tagName: 'script',
+           attributes: {
+             src: '${overlay}',
+             defer: 'true',
+           },
+         }]
+       : [],`,
+  },
+  {
+    name: 'Next.js',
+    configs: ['next.config.mjs', 'next.config.js', 'next.config.ts'],
+    contentDirs: ['content', 'app', 'pages', 'src/app', 'src/pages'],
+    guide: 'nextjs',
+    steps: (config, overlay) => `1) Stamp source offsets. With @next/mdx, in ${config}:
+
+     const withMDX = createMDX({
+       options: { remarkPlugins: [['remark-sidenote', {}]] },
+     });
+
+   If you call remark() yourself, pass the file instead:
+
+     .use(sidenoteOffsets, { file: 'content/posts/my-post.md' })
+
+2) Load the overlay in dev only (e.g. in app/layout.tsx):
+
+     {process.env.NODE_ENV === 'development' && (
+       <script src="${overlay}" defer />
+     )}`,
+  },
+];
+
+const exists = (path) => access(path).then(() => true, () => false);
+
+async function detectFramework(root) {
+  for (const fw of FRAMEWORKS) {
+    for (const config of fw.configs) {
+      if (await exists(join(root, config))) return { ...fw, config };
+    }
+  }
+  return null;
+}
+
+// The daemon only edits markdown inside contentDir, so it must cover every
+// folder the printed steps instrument: all of the framework's folders that
+// exist, as a list when there are several.
+async function pickContentDir(root, fw) {
+  if (!fw) return 'content';
+  const found = [];
+  for (const dir of fw.contentDirs) {
+    if (await exists(join(root, dir))) found.push(dir);
+  }
+  if (found.length === 0) return fw.contentDirs[0];
+  return found.length === 1 ? found[0] : found;
+}
+
+const REPO = 'github.com/bharadwaj-pendyala/sidenote';
+
 if (cmd === 'init') {
   const agent = flag('agent', 'claude');
   if (!AGENTS.includes(agent) && agent !== 'mock') {
     fail(`unknown agent '${agent}'; use ${AGENTS.join(' or ')}`);
   }
+  const root = process.cwd();
+  const fw = await detectFramework(root);
   const port = flag('port', '4517');
-  const contentDir = flag('content', 'content');
+  const contentDir = flag('content') ?? (await pickContentDir(root, fw));
   const config = { agent, contentDir, port: Number(port) };
   const askModel = flag('ask-model');
   const resolveModel = flag('resolve-model');
   if (askModel) config.askModel = askModel;
   if (resolveModel) config.resolveModel = resolveModel;
-  await mkdir(join(process.cwd(), '.sidenote'), { recursive: true });
+  await mkdir(join(root, '.sidenote'), { recursive: true });
   await writeFile(
-    join(process.cwd(), '.sidenote', 'config.json'),
+    join(root, '.sidenote', 'config.json'),
     JSON.stringify(config, null, 2) + '\n'
   );
-  console.log(`
+  const overlay = `http://localhost:${port}/overlay.js`;
+  if (fw) {
+    console.log(`
+sidenote configured (agent: ${agent}). ${fw.name} detected (${fw.config}).
+
+Install the plugin:  npm install --save-dev remark-sidenote
+
+Two one-time wiring steps:
+
+${fw.steps(fw.config, overlay)}
+
+Then run:  sidenote dev
+Guide:     docs/guides/${fw.guide}.md in ${REPO}
+`);
+  } else {
+    console.log(`
 sidenote configured (agent: ${agent}).
 
 Two one-time wiring steps in your site:
@@ -65,11 +179,12 @@ Two one-time wiring steps in your site:
 2) Load the overlay in dev only (e.g. in your layout):
 
      {process.env.NODE_ENV === 'development' && (
-       <script src="http://localhost:${port}/overlay.js" defer />
+       <script src="${overlay}" defer />
      )}
 
 Then run:  sidenote dev
 `);
+  }
 } else if (cmd === 'dev') {
   const port = flag('port', '4517');
   const daemon = join(here, '..', 'packages', 'daemon', 'server.js');
